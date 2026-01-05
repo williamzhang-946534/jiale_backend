@@ -1,0 +1,293 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+enum UserRole {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum ProviderStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  ARRIVED
+  STARTED
+  COMPLETED
+  CANCELED
+}
+
+enum TransactionType {
+  INCOME
+  WITHDRAWAL
+  REFUND
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String       @id @default(cuid())
+  phone         String       @unique
+  nickname      String?
+  password      String
+  avatarUrl     String?
+  role          UserRole     @default(CUSTOMER)
+  level         Int          @default(1)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  walletBalance Decimal      @default(0.0) @db.Decimal(18, 2)
+
+  addresses     Address[]
+  orders        Order[]      @relation("UserOrders")
+  coupons       UserCoupon[]
+  transactions  Transaction[]
+  providers     Provider[]   // 一个用户可以对应多个服务者
+}
+
+model Provider {
+  id             String          @id @default(cuid())
+  user           User            @relation(fields: [userId], references: [id])
+  userId         String
+  name           String
+  phone          String
+  status         ProviderStatus  @default(UNVERIFIED)
+  isBanned       Boolean         @default(false)
+  rejectReason   String?
+  intro          String?
+  avatarUrl      String?
+  idCardNumber   String?
+  idCardImageUrl String?
+  certFiles      Json?
+  rating         Decimal?        @db.Decimal(3, 2)
+  todayEarnings  Decimal         @default(0.0) @db.Decimal(18, 2)
+  walletBalance  Decimal         @default(0.0) @db.Decimal(18, 2)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  orders         Order[]         @relation("ProviderOrders")
+  schedules      ProviderSchedule[]
+  withdrawals    Withdrawal[]
+  transactions   Transaction[]
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+model ServiceCategory {
+  id        String            @id @default(cuid())
+  name      String
+  parentId  String?
+  icon      String?
+  sortOrder Int               @default(1)
+
+  parent    ServiceCategory?  @relation("CategoryToParent", fields: [parentId], references: [id])
+  children  ServiceCategory[] @relation("CategoryToParent")
+
+  services  Service[]
+}
+
+model Service {
+  id          String          @id @default(cuid())
+  name        String
+  category    ServiceCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  price       Decimal         @db.Decimal(18, 2)
+  unit        String
+  images      String[]
+  description String?
+  tags        String[]
+  status      String          @default("active")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  orders      Order[]
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  contactName String
+  phone       String
+  province    String
+  city        String
+  district    String
+  detail      String
+  latitude    Float?
+  longitude   Float?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      Order[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNo       String      @unique
+  user          User        @relation("UserOrders", fields: [userId], references: [id])
+  userId        String
+  provider      Provider?   @relation("ProviderOrders", fields: [providerId], references: [id])
+  providerId    String?
+  service       Service     @relation(fields: [serviceId], references: [id])
+  serviceId     String
+  address       Address     @relation(fields: [addressId], references: [id])
+  addressId     String
+  status        OrderStatus @default(PENDING)
+  serviceDate   DateTime
+  serviceTime   String
+  duration      Int?
+  originalPrice Decimal     @db.Decimal(18, 2)
+  discount      Decimal     @db.Decimal(18, 2)
+  totalPrice    Decimal     @db.Decimal(18, 2)
+  paidAmount    Decimal     @default(0.0) @db.Decimal(18, 2)
+  paidAt        DateTime?
+  specialRequests String?
+  timeline      Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  orderLogs    OrderOperationLog[]
+  transactions Transaction[]
+  reviews      OrderReview?
+}
+
+model OrderOperationLog {
+  id          String      @id @default(cuid())
+  order       Order       @relation(fields: [orderId], references: [id])
+  orderId     String
+  operatorId  String
+  operatorRole UserRole
+  oldStatus   OrderStatus
+  newStatus   OrderStatus
+  remark      String?
+  createdAt   DateTime    @default(now())
+}
+
+model OrderReview {
+  id        String   @id @default(cuid())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String   @unique
+  rating    Int
+  content   String?
+  createdAt DateTime @default(now())
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  linkUrl   String?
+  sortOrder Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CouponTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  amount        Decimal  @db.Decimal(18, 2)
+  minSpend      Decimal  @db.Decimal(18, 2)
+  totalQuantity Int
+  validDays     Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userCoupons   UserCoupon[]
+}
+
+model UserCoupon {
+  id         String         @id @default(cuid())
+  user       User           @relation(fields: [userId], references: [id])
+  userId     String
+  template   CouponTemplate @relation(fields: [templateId], references: [id])
+  templateId String
+  isUsed     Boolean        @default(false)
+  usedAt     DateTime?
+  expireAt   DateTime
+  createdAt  DateTime       @default(now())
+}
+
+model Withdrawal {
+  id             String           @id @default(cuid())
+  provider       Provider         @relation(fields: [providerId], references: [id])
+  providerId     String
+  amount         Decimal          @db.Decimal(18, 2)
+  status         WithdrawalStatus @default(PENDING)
+  applyTime      DateTime         @default(now())
+  bankInfo       String
+  firstReviewerId  String?
+  secondReviewerId String?
+  reviewedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  transactions   Transaction[]
+}
+
+model Transaction {
+  id            String          @id @default(cuid())
+  type          TransactionType
+  amount        Decimal         @db.Decimal(18, 2)
+  beforeBalance Decimal         @db.Decimal(18, 2)
+  afterBalance  Decimal         @db.Decimal(18, 2)
+  user          User?           @relation(fields: [userId], references: [id])
+  userId        String?
+  provider      Provider?       @relation(fields: [providerId], references: [id])
+  providerId    String?
+  order         Order?          @relation(fields: [orderId], references: [id])
+  orderId       String?
+  withdrawal    Withdrawal?     @relation(fields: [withdrawalId], references: [id])
+  withdrawalId  String?
+  createdAt     DateTime        @default(now())
+}
+
+model ProviderSchedule {
+  id         String   @id @default(cuid())
+  provider   Provider @relation(fields: [providerId], references: [id])
+  providerId String
+  date       DateTime
+  slots      String[]
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  module       String
+  action       String
+  operatorId   String
+  operatorRole UserRole
+  entityId     String?
+  detail       Json?
+  createdAt    DateTime @default(now())
+
+  admin        AdminUser? @relation(fields: [adminId], references: [id])
+  adminId      String?
+}
+
+
