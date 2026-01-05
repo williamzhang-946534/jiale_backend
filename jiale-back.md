@@ -11,6 +11,27 @@ JSON
   "data": { ... }   // 具体业务数据
 }
 鉴权: 请求头需携带 Authorization: Bearer <token> (登录/注册接口除外)。
+
+1.1 数据模型定义
+ProviderStatus (服务者状态):
+- UNVERIFIED: 未认证
+- PENDING: 待审核
+- VERIFIED: 已认证
+- REJECTED: 已拒绝
+
+ProviderType (服务者类型):
+- MATERNITY_NURSE: 月嫂
+- CHILD_CARE_NURSE: 育儿嫂
+- LIVE_IN_NANNY: 住家保姆
+- CLEANING: 保洁
+- HOUSEKEEPING: 清洁
+- HOURLY_WORKER: 钟点工
+- LAUNDRY_CARE: 洗护
+- HOSPITAL_CARE: 医院看护
+- ELDERLY_CARE: 老人护理
+- COOKING: 烹饪
+- TUTORING: 家教
+
 2. 用户端 (Customer App)
 2.1 首页 (HomeView)
 1. 获取首页轮播图
@@ -383,23 +404,86 @@ JSON
 1. 服务者列表
 接口: GET /providers
 参数:
-status: 'unverified' | 'pending' | 'verified' | 'rejected' (重点关注 pending)
+status: 'unverified' | 'pending' | 'verified' | 'rejected' | 'banned' (重点关注 pending)
 keyword: 姓名/手机号
+page: 页码 (默认1)
+pageSize: 每页数量 (默认20)
 响应:
 code
 JSON
 {
   "data": {
     "list": [
-      { "id": "p1", "name": "王师傅", "phone": "...", "status": "pending", "createTime": "..." }
+      {
+        "id": "p1",
+        "name": "王师傅",
+        "phone": "13900139001",
+        "status": "pending",
+        "isBanned": false,
+        "createTime": "2023-12-01T09:00:00.000Z",
+        "rating": 4.8,
+        "intro": "专业维修师傅，技术过硬",
+        
+        // 统计信息
+        "totalOrders": 156,
+        "totalRevenue": 45680.50,
+        "walletBalance": 2340.00,
+        "withdrawableBalance": 2000.00,
+        
+        // 个人信息
+        "age": 35,
+        "experience": 8,
+        "zodiac": "天秤座",
+        "chineseZodiac": "兔",
+        "hometown": "河南郑州",
+        "homeAddress": "河南省郑州市金水区...",
+        "expectedSalary": 8000.00,
+        "actualSalary": 7500.00,
+        
+        // 服务信息
+        "providerTypes": ["月嫂", "育儿嫂", "保洁"],
+        "serviceArea": "河南漯河",
+        "isOnline": true,
+        "isRecommended": true,
+        
+        // 当前订单信息
+        "currentOrder": null
+      }
     ],
-    "total": 100
+    "total": 100,
+    "page": 1,
+    "pageSize": 20
   }
 }
 2. 获取服务者详情 (审核视图)
 描述: 查看服务者提交的身份证、证书照片等敏感信息。
 接口: GET /providers/{id}/detail
-响应: 包含 ProviderProfile 及上传的 certFiles 图片链接。
+响应:
+code
+JSON
+{
+  "data": {
+    "id": "p1",
+    "name": "王师傅",
+    "phone": "13900139001",
+    "status": "pending",
+    "idCardImageUrl": "https://example.com/idcard.jpg?watermark=1",
+    "certFiles": [
+      "https://example.com/cert1.jpg?watermark=1",
+      "https://example.com/cert2.jpg?watermark=1"
+    ],
+    "workExperience": [
+      {
+        "company": "某某家政公司",
+        "position": "月嫂",
+        "startDate": "2020-01",
+        "endDate": "2023-12",
+        "description": "负责新生儿护理和产妇照料"
+      }
+    ],
+    // ... 其他字段
+  }
+}
 3. 审核服务者
 接口: POST /providers/{id}/audit
 请求:
@@ -413,7 +497,59 @@ JSON
 描述: 处理违规账号。
 接口: PATCH /providers/{id}/account-status
 请求: { "isBanned": true }
-5. 订单中心 (Order Management)
+5. 服务者统计管理
+1. 获取服务者每日统计
+接口: GET /providers/{id}/daily-stats
+参数:
+startDate: 开始日期 (可选)
+endDate: 结束日期 (可选)
+响应:
+code
+JSON
+{
+  "data": [
+    {
+      "date": "2023-12-01",
+      "orderCount": 5,
+      "orderAmount": 850.00,
+      "earnings": 850.00,
+      "orderTypes": {
+        "月嫂": 2,
+        "保洁": 3
+      }
+    }
+  ]
+}
+2. 获取服务者月度统计
+接口: GET /providers/{id}/monthly-stats
+参数:
+year: 年份 (必需)
+month: 月份 (必需)
+响应:
+code
+JSON
+{
+  "data": {
+    "year": 2023,
+    "month": 12,
+    "totalOrders": 156,
+    "totalRevenue": 45680.50,
+    "totalEarnings": 45680.50,
+    "workingDays": 22,
+    "dailyStats": [...]
+  }
+}
+3. 更新服务者统计
+描述: 订单完成时自动调用，更新服务者统计数据
+接口: POST /providers/{id}/update-stats
+请求:
+code
+JSON
+{
+  "orderAmount": 850.00,
+  "orderType": "月嫂"
+}
+6. 订单中心 (Order Management)
 1. 订单列表
 接口: GET /orders
 参数:
@@ -490,3 +626,39 @@ JSON
 2. 管理员账号管理
 接口: GET /settings/admins | POST /settings/admins
 描述: 添加新的后台操作员。
+
+9. 功能特性说明
+9.1 服务者统计系统
+系统自动记录服务者的每日、每月统计数据，包括：
+- 订单数量和金额
+- 订单类型分布
+- 收入统计
+- 工作天数
+
+统计更新时机：
+- 订单完成时自动更新当日统计
+- 每日凌晨0点重置今日收入
+- 每日凌晨1点生成前一日统计报告
+
+9.2 服务者信息扩展
+服务者档案包含完整的个人信息和服务信息：
+- 基础统计：总订单数、总收入、钱包余额
+- 个人信息：年龄、经验、星座、属相、籍贯
+- 工作信息：期望工资、实际工资、工作经历
+- 服务信息：服务类型、服务区域、在线状态
+- 推荐设置：是否在首页推荐展示
+
+9.3 数据库设计
+新增表结构：
+- ProviderDailyStats: 服务者每日统计表
+- Provider 模型扩展：新增20+字段
+- ProviderType 枚举：11种服务类型
+
+9.4 定时任务
+- 每日0点：重置服务者今日收入
+- 每日1点：生成统计报告
+- 订单完成时：实时更新统计数据
+
+---
+文档版本: v1.0
+最后更新: 2023-12-05

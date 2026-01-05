@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { CustomerModule } from './modules/customer/customer.module';
 import { ProviderModule } from './modules/provider/provider.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -8,6 +9,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     SharedModule,
     OrderModule,
     FinanceModule,

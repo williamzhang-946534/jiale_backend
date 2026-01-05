@@ -59,6 +59,23 @@ export class AdminProviderController {
           createdAt: true,
           rating: true,
           intro: true,
+          // 新增字段
+          totalOrders: true,
+          totalRevenue: true,
+          walletBalance: true,
+          withdrawableBalance: true,
+          age: true,
+          experience: true,
+          zodiac: true,
+          chineseZodiac: true,
+          hometown: true,
+          homeAddress: true,
+          expectedSalary: true,
+          actualSalary: true,
+          providerTypes: true,
+          serviceArea: true,
+          isOnline: true,
+          isRecommended: true,
         } as any,
         orderBy: {
           createdAt: 'desc',
@@ -77,6 +94,21 @@ export class AdminProviderController {
         'REJECTED': 'rejected'
       };
       
+      // 服务类型转换：枚举 -> 中文
+      const typeMap: Record<string, string> = {
+        'MATERNITY_NURSE': '月嫂',
+        'CHILD_CARE_NURSE': '育儿嫂',
+        'LIVE_IN_NANNY': '住家保姆',
+        'CLEANING': '保洁',
+        'HOUSEKEEPING': '清洁',
+        'HOURLY_WORKER': '钟点工',
+        'LAUNDRY_CARE': '洗护',
+        'HOSPITAL_CARE': '医院看护',
+        'ELDERLY_CARE': '老人护理',
+        'COOKING': '烹饪',
+        'TUTORING': '家教'
+      };
+      
       return {
         id: provider.id,
         name: provider.name,
@@ -86,6 +118,27 @@ export class AdminProviderController {
         createTime: provider.createdAt?.toISOString(),
         rating: provider.rating?.toNumber() || 0,
         intro: provider.intro,
+        
+        // 新增字段
+        totalOrders: provider.totalOrders || 0,
+        totalRevenue: provider.totalRevenue?.toNumber() || 0,
+        walletBalance: provider.walletBalance?.toNumber() || 0,
+        withdrawableBalance: provider.withdrawableBalance?.toNumber() || 0,
+        age: provider.age,
+        experience: provider.experience,
+        zodiac: provider.zodiac,
+        chineseZodiac: provider.chineseZodiac,
+        hometown: provider.hometown,
+        homeAddress: provider.homeAddress,
+        expectedSalary: provider.expectedSalary?.toNumber(),
+        actualSalary: provider.actualSalary?.toNumber(),
+        providerTypes: provider.providerTypes?.map((type: string) => typeMap[type] || type) || [],
+        serviceArea: provider.serviceArea,
+        isOnline: provider.isOnline || false,
+        isRecommended: provider.isRecommended || false,
+        
+        // 正在服务的订单信息（需要额外查询）
+        currentOrder: null, // TODO: 实现当前订单查询
       };
     });
 
