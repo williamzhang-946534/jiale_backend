@@ -264,6 +264,7 @@ model Banner {
   imageUrl  String
   linkUrl   String?
   sortOrder Int      @default(1)
+  status    String   @default("draft") // draft: 草稿, published: 已发布
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -275,6 +276,9 @@ model CouponTemplate {
   minSpend      Decimal  @db.Decimal(18, 2)
   totalQuantity Int
   validDays     Int
+  description   String?
+  userLimit     Int      @default(1)
+  categoryIds   String[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -348,6 +352,23 @@ model AuditLog {
 
   admin        AdminUser? @relation(fields: [adminId], references: [id])
   adminId      String?
+}
+
+model SpecialOffer {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  price       Decimal  @db.Decimal(18, 2)
+  unit        String
+  rating      Decimal  @db.Decimal(3, 2)
+  image       String
+  description String
+  providerCount Int    @default(0)
+  tags        String[]
+  status      String   @default("active") // active: 上架, inactive: 下架
+  sortOrder   Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 

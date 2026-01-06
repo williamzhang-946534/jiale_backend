@@ -4,8 +4,8 @@ import { RoleGuard } from '../shared/guards/role.guard';
 import { ProviderStatsService } from './provider-stats.service';
 import { ok } from '../shared/types/api-response';
 
-@Controller('v1/provider')
-@UseGuards(JwtAuthGuard, new RoleGuard(['PROVIDER', 'ADMIN']))
+@Controller('admin/v1/providers')
+@UseGuards(JwtAuthGuard, new RoleGuard(['ADMIN']))
 export class ProviderStatsController {
   constructor(private readonly providerStatsService: ProviderStatsService) {}
 
