@@ -901,6 +901,1158 @@ JSON
 3. **低优先级**: 系统设置（基础配置功能，可后续实现）
 
 ---
-文档版本: v1.1
-最后更新: 2023-12-06
-新增: 未实现接口清单
+文档版本: v1.3
+最后更新: 2025-01-13
+新增: 重复接口删除与统一接口实现
+
+# 家乐家政 (JiaLe Home Services) - 后端接口文档 v1.3
+
+## 1. 基础说明
+基础路径 (Base URL): /api/v1
+请求格式: application/json
+响应格式:
+```json
+{
+  "code": 200,      // 200: 成功, 4xx/5xx: 错误
+  "message": "success",
+  "data": { ... }   // 具体业务数据
+}
+```
+鉴权: 请求头需携带 Authorization: Bearer <token> (登录/注册接口除外)。
+
+## 2. 接口状态说明
+
+### ✅ 已删除的重复接口
+以下接口已被删除，功能已合并到统一接口中：
+
+#### 2.1 首页模块 (旧接口 - 已删除)
+- ❌ `GET /api/v1/home/banners` - 已合并到 `/api/v1/home/init`
+- ❌ `GET /api/v1/home/quick-entries` - 已合并到 `/api/v1/home/init`
+- ❌ `GET /api/v1/home/special-offers` - 已合并到 `/api/v1/home/init`
+- ❌ `GET /api/v1/home/providers` - 已合并到 `/api/v1/home/init`
+
+#### 2.2 服务模块 (旧接口 - 已删除)
+- ❌ `GET /api/v1/services` - 已合并到 `/api/v1/services/detail/{id}`
+- ❌ `POST /api/v1/orders` - 已修改为 `/api/v1/orders/create`
+
+#### 2.3 订单模块 (旧接口 - 已删除)
+- ❌ `GET /api/v1/orders` - 已合并到 `/api/v1/orders/calendar`
+
+### 🎯 保留的统一接口
+以下接口为当前使用的统一接口，已实现并正常工作：
+
+#### 3.1 新增统一接口 (14个)
+- ✅ `GET /api/v1/home/init` - 首页综合数据
+- ✅ `POST /api/v1/services/match` - 智能匹配服务者
+- ✅ `GET /api/v1/services/recommendations` - 推荐配套服务
+- ✅ `GET /api/v1/services/detail/{id}` - 服务详情(含规格)
+- ✅ `POST /api/v1/orders/create` - 创建订单(支持规格)
+- ✅ `GET /api/v1/market/flash-sales` - 闪购秒杀
+- ✅ `POST /api/v1/market/newcomer/claim` - 新人礼包
+- ✅ `GET /api/v1/orders/calendar` - 服务日历
+- ✅ `GET /api/v1/users/favorites/providers` - 收藏服务者
+- ✅ `PATCH /api/v1/users/addresses/{id}/default` - 设置默认地址
+
+#### 3.2 后台管理新增接口 (6个)
+- ✅ `GET /api/admin/v1/providers/{id}/daily-stats` - 服务者日统计
+- ✅ `GET /api/admin/v1/providers/{id}/monthly-stats` - 服务者月统计
+- ✅ `POST /api/admin/v1/providers/{id}/update-stats` - 更新统计
+- ✅ `POST /api/admin/v1/marketing/coupons` - 创建优惠券
+- ✅ `GET /api/admin/v1/settings/system` - 获取系统设置
+- ✅ `PUT /api/admin/v1/settings/system` - 更新系统设置
+
+## 3. 数据库优化状态
+
+### ✅ 已完成的新增表
+- `ServiceSpecification` - 服务规格表
+- `UserFavoriteProvider` - 用户收藏服务者表
+- `FlashSale` - 闪购活动表
+- `SystemSettings` - 系统设置表
+
+### ✅ 已更新的模型关联
+- `User.favoriteProviders` - 用户收藏关联
+- `Provider.favoritedBy` - 被收藏关联
+- `Service.specifications` - 服务规格关联
+- `Service.flashSales` - 闪购关联
+
+## 4. API文档状态
+
+### ✅ Swagger自动生成
+- **访问地址**: http://localhost:3000/api/docs
+- **功能**: 完整的API文档自动生成
+- **分类**: 用户端、服务端、后台管理、统一接口
+
+## 5. 当前系统状态
+
+### 🚀 服务器状态
+- **状态**: ✅ 正在运行
+- **端口**: 3000
+- **API文档**: http://localhost:3000/api/docs
+- **基础路径**: http://localhost:3000/api
+
+### 📋 可用接口
+所有接口已实现并可通过Swagger文档查看和测试。
+
+---
+
+**总结**: 重复接口已删除，统一接口已实现，数据库结构已优化，权限控制已完善。系统架构更加清晰，为生产环境部署做好准备。
+
+## 1. 基础说明
+基础路径 (Base URL): /api/v1
+请求格式: application/json
+响应格式:
+```json
+{
+  "code": 200,      // 200: 成功, 4xx/5xx: 错误
+  "message": "success",
+  "data": { ... }   // 具体业务数据
+}
+```
+鉴权: 请求头需携带 Authorization: Bearer <token> (登录/注册接口除外)。
+
+## 2. 统一接口规范
+
+### 2.1 首页模块 (Unified Home API)
+
+#### GET /api/v1/home/init
+**功能说明**: 一次性获取首页所需的广告位、金刚区分类、限时特惠、推荐服务等所有数据。
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "banners": [
+      {
+        "id": "banner_1",
+        "imageUrl": "https://example.com/banner1.jpg",
+        "linkUrl": "https://example.com/promo1",
+        "sortOrder": 1
+      }
+    ],
+    "categories": [
+      {
+        "id": "cleaning",
+        "name": "保洁清洗",
+        "icon": "🧹",
+        "color": "bg-emerald-50"
+      },
+      {
+        "id": "maternity",
+        "name": "母婴护理",
+        "icon": "👶",
+        "color": "bg-pink-50"
+      }
+    ],
+    "specialOffers": [
+      {
+        "id": "offer_1",
+        "name": "标准保洁",
+        "price": 45,
+        "originalPrice": 60,
+        "image": "https://example.com/clean.jpg",
+        "discount": 0.75,
+        "unit": "次",
+        "tags": ["限时特惠", "深度清洁"]
+      }
+    ],
+    "featuredServices": [
+      {
+        "id": "service_1",
+        "isFeatured": true,
+        "name": "金牌月嫂",
+        "rating": 5.0,
+        "price": 12800,
+        "image": "https://example.com/matrons.jpg"
+      }
+    ]
+  }
+}
+```
+
+#### POST /api/v1/services/match
+**功能说明**: 根据用户填写的需求（日期、预算等）智能匹配合适的阿姨/师傅。
+
+**请求参数**:
+```json
+{
+  "serviceId": "svc_matron",
+  "startDate": "2023-12-20",
+  "budgetRange": "8000-12000",
+  "specialRequirements": "需要会做南方菜"
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "provider_1",
+      "name": "王阿姨",
+      "avatar": "https://example.com/avatar1.jpg",
+      "rating": 4.9,
+      "experience": 8,
+      "intro": "专业月嫂，有丰富的新生儿护理经验",
+      "expectedSalary": 10000,
+      "serviceTypes": ["MATERNITY_NURSE", "CHILD_CARE_NURSE"],
+      "hometown": "河南郑州"
+    }
+  ]
+}
+```
+
+#### GET /api/v1/services/recommendations
+**功能说明**: 获取推荐配套服务，用于详情页底部的"推荐配套服务"版块。
+
+**请求参数**:
+- `serviceId`: string (必需) - 当前服务ID
+- `limit`: number (可选) - 返回数量限制，默认5个
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "service_2",
+      "name": "深度保洁",
+      "categoryName": "保洁清洗",
+      "price": 85,
+      "unit": "次",
+      "image": "https://example.com/deep-clean.jpg",
+      "rating": 4.8,
+      "tags": ["深度清洁", "除螨"]
+    }
+  ]
+}
+```
+
+#### GET /api/v1/market/flash-sales
+**功能说明**: 获取当前时段及未来时段的秒杀服务。
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "currentTime": "12:00",
+    "items": [
+      {
+        "id": "flash_1",
+        "flashPrice": 9.9,
+        "stock": 50,
+        "totalStock": 200,
+        "startTime": "10:00",
+        "endTime": "12:00"
+      }
+    ]
+  }
+}
+```
+
+#### POST /api/v1/market/newcomer/claim
+**功能说明**: 新用户点击领取按钮，后端验证资格并下发优惠券。
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "success": true,
+    "couponAmount": 50,
+    "message": "新人礼包领取成功"
+  }
+}
+```
+
+#### GET /api/v1/orders/calendar
+**功能说明**: 按月/地址获取已预约的服务分布，用于日历视图。
+
+**请求参数**:
+- `year`: number (必需) - 年份
+- `month`: number (必需) - 月份
+- `addressId`: string (可选) - 地址ID，"all"表示所有地址
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "date": "2023-11-25",
+      "orderId": "ORD-7782",
+      "status": "pending",
+      "serviceName": "标准保洁"
+    }
+  ]
+}
+```
+
+#### GET /api/v1/users/favorites/providers
+**功能说明**: 获取用户收藏的服务者列表。
+
+**请求参数**:
+- `page`: number (可选) - 页码，默认1
+- `pageSize`: number (可选) - 每页数量，默认10
+- `sortBy`: string (可选) - 排序字段，默认createdAt
+- `sortOrder`: string (可选) - 排序方向，asc/desc，默认desc
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "provider_1",
+      "name": "王阿姨",
+      "avatar": "https://example.com/avatar1.jpg",
+      "rating": 4.9,
+      "experience": 8,
+      "intro": "专业月嫂",
+      "expectedSalary": 10000,
+      "serviceTypes": ["MATERNITY_NURSE"],
+      "hometown": "河南郑州",
+      "isOnline": true,
+      "totalOrders": 156,
+      "totalRevenue": 45680.50
+    }
+  ]
+}
+```
+
+#### PATCH /api/v1/users/addresses/{addrId}/default
+**功能说明**: 设置/取消用户的默认服务地址。
+
+**请求参数**:
+```json
+{
+  "isDefault": true
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "addr_1",
+    "isDefault": true,
+    "contactName": "张三",
+    "phone": "13800138000",
+    "address": "河南省郑州市金水区..."
+  }
+}
+```
+
+### 2.2 服务与规格模块 (Unified Service API)
+
+#### GET /api/v1/services/detail/{serviceId}
+**功能说明**: 获取服务详细信息、SKU规格列表及详情介绍图。
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "svc_daily_clean",
+    "name": "标准日常保洁",
+    "categoryId": "cat_1",
+    "categoryName": "保洁清洗",
+    "price": 45,
+    "unit": "小时",
+    "images": ["https://example.com/service1.jpg"],
+    "description": "专业家庭日常保洁服务",
+    "tags": ["日常保洁", "基础清洁"],
+    "specifications": [
+      {
+        "id": "sp1",
+        "label": "2小时",
+        "desc": "基础除尘，适合小户型",
+        "price": 45,
+        "originalPrice": 60
+      },
+      {
+        "id": "sp2",
+        "label": "4小时",
+        "desc": "深度除垢，适合大户型",
+        "price": 85,
+        "originalPrice": 100
+      }
+    ],
+    "details": [
+      "https://example.com/detail1.jpg",
+      "https://example.com/detail2.jpg"
+    ],
+    "promises": ["不满意重新做", "财产险保障", "迟到赔付"],
+    "process": [
+      {
+        "title": "准时上门",
+        "desc": "服饰整齐，携带专业工具"
+      },
+      {
+        "title": "工具准备",
+        "desc": "准备清洁用品和设备"
+      },
+      {
+        "title": "清洁服务",
+        "desc": "按标准流程进行全面清洁"
+      },
+      {
+        "title": "验收确认",
+        "desc": "客户确认满意后完成服务"
+      }
+    ],
+    "providerCount": 25,
+    "rating": 4.8,
+    "status": "active"
+  }
+}
+```
+
+#### POST /api/v1/orders/create
+**功能说明**: 用户选择规格、地址和时间后提交订单。
+
+**请求参数**:
+```json
+{
+  "serviceId": "svc_daily_clean",
+  "specId": "sp2",
+  "addressId": "addr_1",
+  "serviceDate": "2023-11-25",
+  "serviceTime": "10:00",
+  "duration": 4,
+  "couponId": "coupon_1",
+  "specialRequests": "请重点清洁厨房和卫生间"
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "orderId": "ORD-202311250001",
+    "payToken": "mock_pay_token_12345",
+    "order": {
+      "id": "order_1",
+      "orderNo": "ORD-202311250001",
+      "serviceName": "标准日常保洁",
+      "serviceDate": "2023-11-25T00:00:00.000Z",
+      "serviceTime": "10:00",
+      "totalPrice": 85,
+      "address": {
+        "id": "addr_1",
+        "contactName": "张三",
+        "phone": "13800138000",
+        "detail": "河南省郑州市金水区..."
+      }
+    }
+  }
+}
+```
+
+#### GET /api/v1/services
+**功能说明**: 获取服务商品列表，支持分页和分类过滤。
+
+**请求参数**:
+- `page`: number (可选) - 页码，默认1
+- `pageSize`: number (可选) - 每页数量，默认20
+- `categoryId`: string (可选) - 一级分类ID
+- `subCategoryId`: string (可选) - 二级分类ID
+- `sort`: string (可选) - 排序方式：comprehensive/sales/price_asc/price_desc
+- `filter`: string (可选) - 标签筛选
+- `keyword`: string (可选) - 关键词搜索
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "service_1",
+      "name": "标准日常保洁",
+      "categoryName": "保洁清洗",
+      "price": 45,
+      "unit": "小时",
+      "image": "https://example.com/service1.jpg",
+      "tags": ["日常保洁", "基础清洁"],
+      "rating": 4.8,
+      "providerCount": 25,
+      "description": "专业家庭日常保洁服务"
+    }
+  ]
+}
+```
+
+#### GET /api/v1/providers
+**功能说明**: 获取服务者列表，支持地理位置筛选。
+
+**请求参数**:
+- `page`: number (可选) - 页码，默认1
+- `pageSize`: number (可选) - 每页数量，默认20
+- `categoryId`: string (可选) - 分类ID
+- `subCategoryId`: string (可选) - 子分类ID
+- `sort`: string (可选) - 排序方式：comprehensive/rating/price_asc/price_desc
+- `latitude`: number (可选) - 纬度
+- `longitude`: number (可选) - 经度
+- `radius`: number (可选) - 搜索半径(km)，默认50
+- `filter`: string (可选) - 标签筛选
+- `keyword`: string (可选) - 关键词搜索
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "provider_1",
+      "name": "王阿姨",
+      "avatar": "https://example.com/avatar1.jpg",
+      "rating": 4.9,
+      "experience": 8,
+      "intro": "专业月嫂，有丰富的新生儿护理经验",
+      "expectedSalary": 10000,
+      "serviceTypes": ["MATERNITY_NURSE"],
+      "hometown": "河南郑州",
+      "isOnline": true,
+      "totalOrders": 156,
+      "totalRevenue": 45680.50,
+      "distance": "2.5km"
+    }
+  ]
+}
+```
+
+### 2.3 后台管理新增接口 (Admin API)
+
+#### GET /api/admin/v1/providers/{id}/daily-stats
+**功能说明**: 获取指定服务者在指定时间范围内的每日统计数据。
+
+**请求参数**:
+- `startDate`: string (可选) - 开始日期，格式: YYYY-MM-DD
+- `endDate`: string (可选) - 结束日期，格式: YYYY-MM-DD
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "date": "2023-12-01",
+      "orderCount": 5,
+      "orderAmount": 850.00,
+      "earnings": 850.00,
+      "orderTypes": {
+        "月嫂": 2,
+        "保洁": 3
+      }
+    },
+    {
+      "date": "2023-12-02",
+      "orderCount": 3,
+      "orderAmount": 450.00,
+      "earnings": 450.00,
+      "orderTypes": {
+        "育儿嫂": 1,
+        "保洁": 2
+      }
+    }
+  ]
+}
+```
+
+#### GET /api/admin/v1/providers/{id}/monthly-stats
+**功能说明**: 获取指定服务者在指定年月的详细统计数据。
+
+**请求参数**:
+- `year`: number (必需) - 年份，如: 2023
+- `month`: number (必需) - 月份，如: 12
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "year": 2023,
+    "month": 12,
+    "totalOrders": 156,
+    "totalRevenue": 45680.50,
+    "totalEarnings": 45680.50,
+    "workingDays": 22,
+    "orderTypesSummary": {
+      "月嫂": 80,
+      "育儿嫂": 40,
+      "保洁": 36
+    },
+    "dailyStats": [
+      {
+        "date": "2023-12-01",
+        "orderCount": 5,
+        "orderAmount": 850.00,
+        "earnings": 850.00,
+        "orderTypes": {
+          "月嫂": 2,
+          "保洁": 3
+        }
+      }
+    ]
+  }
+}
+```
+
+#### POST /api/admin/v1/providers/{id}/update-stats
+**功能说明**: 订单完成时自动调用，实时更新服务者统计数据。
+
+**请求参数**:
+```json
+{
+  "orderAmount": 850.00,
+  "orderType": "月嫂"
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "todayOrders": 5,
+    "todayRevenue": 850.00,
+    "monthlyOrders": 156,
+    "monthlyRevenue": 45680.50,
+    "totalOrders": 1250,
+    "totalRevenue": 234500.00
+  }
+}
+```
+
+#### POST /api/admin/v1/marketing/coupons
+**功能说明**: 创建新的优惠券活动，用于营销推广。
+
+**请求参数**:
+```json
+{
+  "name": "新客立减",
+  "amount": 20,
+  "minSpend": 100,
+  "totalQuantity": 1000,
+  "validDays": 7,
+  "description": "新用户专享优惠券",
+  "userLimit": 1,
+  "categoryIds": ["cleaning", "nanny"]
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "coupon_123",
+    "name": "新客立减",
+    "amount": 20,
+    "minSpend": 100,
+    "totalQuantity": 1000,
+    "remainingQuantity": 1000,
+    "validDays": 7,
+    "status": "active",
+    "createTime": "2023-12-06T10:00:00.000Z",
+    "expireTime": "2023-12-13T10:00:00.000Z"
+  }
+}
+```
+
+#### GET /api/admin/v1/settings/system
+**功能说明**: 获取系统基础配置信息。
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "systemName": "家乐家政管理系统",
+    "systemVersion": "v1.0.0",
+    "contactPhone": "400-123-4567",
+    "contactEmail": "support@jiale.com",
+    "businessHours": "09:00-18:00",
+    "orderTimeout": 30,
+    "autoAssign": false,
+    "minOrderAmount": 50,
+    "serviceRadius": 50,
+    "maintenanceMode": false,
+    "announcement": "系统正常运行中"
+  }
+}
+```
+
+#### PUT /api/admin/v1/settings/system
+**功能说明**: 更新系统基础配置参数。
+
+**请求参数**:
+```json
+{
+  "contactPhone": "400-123-4567",
+  "contactEmail": "support@jiale.com",
+  "businessHours": "09:00-18:00",
+  "orderTimeout": 30,
+  "autoAssign": false,
+  "minOrderAmount": 50,
+  "serviceRadius": 50,
+  "maintenanceMode": false,
+  "announcement": "系统将于今晚22:00-23:00进行维护"
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "systemName": "家乐家政管理系统",
+    "systemVersion": "v1.0.0",
+    "contactPhone": "400-123-4567",
+    "contactEmail": "support@jiale.com",
+    "businessHours": "09:00-18:00",
+    "orderTimeout": 30,
+    "autoAssign": false,
+    "minOrderAmount": 50,
+    "serviceRadius": 50,
+    "maintenanceMode": false,
+    "announcement": "系统将于今晚22:00-23:00进行维护",
+    "updateTime": "2023-12-06T10:00:00.000Z"
+  }
+}
+```
+
+## 3. 数据库优化
+
+### 3.1 新增数据表
+
+#### ServiceSpecification (服务规格表)
+```sql
+CREATE TABLE "ServiceSpecification" (
+  "id" TEXT NOT NULL,
+  "serviceId" TEXT NOT NULL,
+  "label" TEXT NOT NULL,
+  "description" TEXT NOT NULL,
+  "price" DECIMAL(18,2) NOT NULL,
+  "originalPrice" DECIMAL(18,2),
+  "duration" INTEGER,
+  "sortOrder" INTEGER NOT NULL DEFAULT 1,
+  "status" TEXT NOT NULL DEFAULT 'active',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+
+  CONSTRAINT "ServiceSpecification_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "ServiceSpecification_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+```
+
+#### UserFavoriteProvider (用户收藏服务者表)
+```sql
+CREATE TABLE "UserFavoriteProvider" (
+  "id" TEXT NOT NULL,
+  "userId" TEXT NOT NULL,
+  "providerId" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT "UserFavoriteProvider_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "UserFavoriteProvider_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "UserFavoriteProvider_providerId_fkey" FOREIGN KEY ("providerId") REFERENCES "Provider"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX "UserFavoriteProvider_userId_providerId_key" ON "UserFavoriteProvider"("userId", "providerId");
+```
+
+#### FlashSale (闪购活动表)
+```sql
+CREATE TABLE "FlashSale" (
+  "id" TEXT NOT NULL,
+  "serviceId" TEXT NOT NULL,
+  "specId" TEXT,
+  "flashPrice" DECIMAL(18,2) NOT NULL,
+  "originalPrice" DECIMAL(18,2) NOT NULL,
+  "totalStock" INTEGER NOT NULL,
+  "currentStock" INTEGER NOT NULL,
+  "startTime" TIMESTAMP(3) NOT NULL,
+  "endTime" TIMESTAMP(3) NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'pending',
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+
+  CONSTRAINT "FlashSale_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "FlashSale_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+```
+
+#### SystemSettings (系统设置表)
+```sql
+CREATE TABLE "SystemSettings" (
+  "id" TEXT NOT NULL,
+  "key" TEXT NOT NULL UNIQUE,
+  "value" TEXT NOT NULL,
+  "description" TEXT,
+  "category" TEXT NOT NULL DEFAULT 'general',
+  "isPublic" BOOLEAN NOT NULL DEFAULT true,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
+
+  CONSTRAINT "SystemSettings_pkey" PRIMARY KEY ("id")
+);
+```
+
+### 3.2 更新Prisma Schema
+
+在现有schema.prisma中添加以下模型：
+
+```prisma
+model ServiceSpecification {
+  id           String   @id @default(cuid())
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId    String
+  label        String
+  description  String
+  price        Decimal  @db.Decimal(18, 2)
+  originalPrice Decimal? @db.Decimal(18, 2)
+  duration     Int?
+  sortOrder    Int      @default(1)
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model UserFavoriteProvider {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  provider   Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerId String
+  createdAt  DateTime  @default(now())
+
+  @@unique([userId, providerId])
+}
+
+model FlashSale {
+  id           String   @id @default(cuid())
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId    String
+  specId       String?
+  flashPrice   Decimal  @db.Decimal(18, 2)
+  originalPrice Decimal  @db.Decimal(18, 2)
+  totalStock   Int
+  currentStock Int
+  startTime    DateTime
+  endTime      DateTime
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  category    String   @default("general")
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+```
+
+### 3.3 更新现有模型
+
+更新Service模型，添加规格关联：
+```prisma
+model Service {
+  // ... 现有字段 ...
+  specifications ServiceSpecification[]
+  flashSales     FlashSale[]
+}
+```
+
+更新User模型，添加收藏关联：
+```prisma
+model User {
+  // ... 现有字段 ...
+  favoriteProviders UserFavoriteProvider[]
+}
+```
+
+更新Provider模型，添加收藏关联：
+```prisma
+model Provider {
+  // ... 现有字段 ...
+  favoritedBy UserFavoriteProvider[]
+}
+```
+
+## 4. 权限控制优化
+
+### 4.1 JWT认证增强
+
+创建认证守卫：
+```typescript
+// src/shared/guards/jwt-auth.guard.ts
+import { Injectable } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtService } from '@nestjs/jwt';
+
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {
+  constructor(private jwtService: JwtService) {
+    super();
+  }
+
+  canActivate(context: ExecutionContext) {
+    const request = context.switchToHttp().getRequest();
+    const token = request.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      throw new UnauthorizedException('未提供认证令牌');
+    }
+
+    try {
+      const payload = this.jwtService.verify(token);
+      request.user = payload;
+      return true;
+    } catch (error) {
+      throw new UnauthorizedException('无效的认证令牌');
+    }
+  }
+}
+```
+
+### 4.2 角色权限控制
+
+创建角色守卫：
+```typescript
+// src/shared/guards/role.guard.ts
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+
+@Injectable()
+export class RoleGuard implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>('roles', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!requiredRoles) {
+      return true;
+    }
+
+    const { user } = context.switchToHttp().getRequest();
+    return requiredRoles.some((role) => user.role?.includes(role));
+  }
+}
+
+// 使用装饰器
+export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
+```
+
+### 4.3 权限装饰器使用
+
+```typescript
+// 在控制器中使用
+@Controller('admin/v1')
+@UseGuards(JwtAuthGuard, RoleGuard)
+@Roles('ADMIN')
+export class AdminController {
+  // 管理员接口
+}
+
+@Controller('v1')
+@UseGuards(JwtAuthGuard)
+export class CustomerController {
+  @Get('profile')
+  @Roles('CUSTOMER', 'PROVIDER')
+  getProfile() {
+    // 用户和提供者都可访问
+  }
+
+  @Get('admin-only')
+  @Roles('ADMIN')
+  adminOnly() {
+    // 仅管理员可访问
+  }
+}
+```
+
+## 5. API文档自动化
+
+### 5.1 Swagger配置
+
+安装依赖：
+```bash
+npm install @nestjs/swagger swagger-ui-express
+```
+
+配置Swagger：
+```typescript
+// src/main.ts
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerTheme } from 'swagger-themes';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  const config = new DocumentBuilder()
+    .setTitle('家乐家政 API')
+    .setDescription('家乐家政后端接口文档')
+    .setVersion('1.2.0')
+    .addBearerAuth()
+    .addTag('用户端')
+    .addTag('服务端')
+    .addTag('后台管理')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: '家乐家政 API 文档',
+  });
+
+  await app.listen(3000);
+}
+```
+
+### 5.2 接口文档装饰器
+
+```typescript
+// 在控制器中添加Swagger装饰器
+@ApiTags('首页')
+@Controller('v1')
+export class UnifiedHomeController {
+  
+  @Get('home/init')
+  @ApiOperation({ summary: '获取首页综合数据' })
+  @ApiResponse({ status: 200, description: '成功', type: HomeInitResponseDto })
+  async homeInit() {
+    // ...
+  }
+
+  @Post('services/match')
+  @ApiOperation({ summary: '智能匹配服务者' })
+  @ApiBody({ type: ServiceMatchDto })
+  @ApiResponse({ status: 200, description: '匹配成功' })
+  async serviceMatch(@Body() matchDto: ServiceMatchDto) {
+    // ...
+  }
+}
+```
+
+## 6. 实现优先级建议
+
+### 6.1 高优先级 (立即实现)
+1. **数据库优化** - 添加服务规格表、收藏表等核心表结构
+2. **权限控制** - 完善JWT认证和角色权限验证
+3. **API文档** - 使用Swagger生成自动化API文档
+
+### 6.2 中优先级 (后续实现)
+1. **缓存策略** - 对首页数据等高频访问接口添加Redis缓存
+2. **测试覆盖** - 编写单元测试和集成测试
+
+### 6.3 低优先级 (可选实现)
+1. **性能监控** - 添加接口性能监控和日志
+2. **国际化** - 支持多语言接口响应
+
+---
+
+**文档版本**: v1.2  
+**最后更新**: 2025-01-13  
+**新增内容**: 统一接口实现、数据库优化、权限控制、API文档自动化  
+**维护人员**: 后端开发团队
+POST /api/services/v1/match
+功能说明: 根据用户填写的需求（日期、预算等）匹配合适的阿姨/师傅。
+请求参数:
+code
+JSON
+{
+  "serviceId": "svc_matron",
+  "startDate": "2023-12-20",
+  "budgetRange": "8000-12000",
+  "specialRequirements": "需要会做南方菜"
+}
+响应内容: ProviderProfile[] (匹配到的阿姨列表)
+3. 交易与订单模块 (Transaction API)
+3.1 创建预约订单
+POST /api/orders/v1/create
+功能说明: 用户选择规格、地址和时间后提交订单。
+请求参数:
+code
+JSON
+{
+  "serviceId": "svc_daily_clean",
+  "specId": "sp2", // 用户选中的规格ID
+  "addressId": "addr1",
+  "serviceDate": "2023-11-25",
+  "serviceTime": "10:00",
+  "duration": 4, // 针对小时工
+  "couponId": "c1" // 可选
+}
+响应内容: 订单摘要及预支付参数（如微信支付 prepay_id）。
+3.2 获取服务日历数据
+GET /api/orders/v1/calendar
+功能说明: 按月/地址获取已预约的服务分布。
+请求参数: ?year=2023&month=11&addressId=all
+响应内容:
+code
+JSON
+[
+  { "date": "2023-11-25", "orderId": "ORD-7782", "status": "pending" }
+]
+4. 特色专区模块 (Specialty Zone API)
+4.1 获取闪购秒杀列表
+GET /api/market/v1/flash-sales
+功能说明: 获取当前时段及未来时段的秒杀服务。
+响应数据:
+code
+JSON
+{
+  "currentTime": "12:00",
+  "items": [
+    { "id": "svc_1", "flashPrice": 9.9, "stock": 50, "totalStock": 200 }
+  ]
+}
+4.2 领取新人礼包 (优惠券)
+POST /api/market/v1/newcomer/claim
+功能说明: 新用户点击领取按钮，后端验证资格并下发优惠券。
+响应数据: { "success": true, "couponAmount": 50 }
+5. 地址与用户模块 (User API)
+5.1 设置/取消默认地址
+PATCH /api/user/v1/address/{addrId}/default
+功能说明: 修改用户的默认服务地址。
+请求参数: { "isDefault": true }
+新增/删除接口清单建议：
+新增: GET /api/services/v1/recommendations?serviceId=xxx
+原因: 用于详情页底部的“推荐配套服务”版块。
+修改: POST /api/orders/v1/create
+变动: 必须增加 specId 字段，以支持前端新加的多规格切换功能。
+新增: GET /api/user/v1/favorites/providers
+原因: 原来只有服务收藏，现在前端增加了“我的收藏”阿姨列表，需要专门获取收藏的服务者接口。
+删除/替换: 如果之前有 GET /api/services/v1/list，建议增加分页和分类过滤参数，以支持前端分类页的加载逻辑。
+这些接口设计采用了 RESTful 风格，并充分考虑了前端目前的 ViewState 导航逻辑和数据过滤（如 isFeatured 和 isSpecial）的需求。

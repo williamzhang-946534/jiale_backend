@@ -12,6 +12,8 @@ import { AdminServiceController } from './service.controller';
 import { AdminOrderController } from './admin-order.controller';
 import { AdminUserManagementController } from './admin-user-management.controller';
 import { AdminMarketingController } from './marketing.controller';
+import { ProviderStatsController } from './provider-stats.controller';
+import { SystemSettingsController } from './system-settings.controller';
 
 @Module({
   imports: [SharedModule, FinanceModule],
@@ -26,6 +28,8 @@ import { AdminMarketingController } from './marketing.controller';
     AdminOrderController,
     AdminUserManagementController,
     AdminMarketingController,
+    ProviderStatsController,
+    SystemSettingsController,
   ],
   providers: [ProviderVerificationService],
 })
