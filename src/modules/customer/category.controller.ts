@@ -14,6 +14,13 @@ export class CategoryController {
       },
       include: {
         children: {
+          include: {
+            children: {
+              orderBy: {
+                sortOrder: 'asc',
+              },
+            },
+          },
           orderBy: {
             sortOrder: 'asc',
           },
@@ -30,9 +37,13 @@ export class CategoryController {
       items: category.children.map((child) => ({
         id: child.id,
         name: child.name,
+        items: child.children.map((grandChild) => ({
+          id: grandChild.id,
+          name: grandChild.name,
+        })),
       })),
     }));
 
-    return ok({ data });
+    return ok(data);
   }
 }

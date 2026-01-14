@@ -8,7 +8,7 @@ import { AuthService } from '../services/auth.service';
 import { PrismaService } from '../services/prisma.service';
 import { ok } from '../types/api-response';
 
-@Controller('auth')
+@Controller('v1/auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -17,11 +17,15 @@ export class AuthController {
 
   /**
    * 用户登录（手机号 + 密码）
-   * POST /api/auth/customer/login
+   * POST /api/v1/auth/customer/login
    */
   @Post('customer/login')
-  async customerLogin(@Body() body: { phone: string; password: string }) {
-    const { phone, password } = body;
+  async customerLogin(@Body() body: { 
+    phone: string; 
+    password: string; 
+    redirectUrl?: string; // 可选的返回URL
+  }) {
+    const { phone, password, redirectUrl } = body;
 
     if (!phone || !password) {
       throw new UnauthorizedException('手机号和密码不能为空');
@@ -51,6 +55,7 @@ export class AuthController {
         role: user.role,
         avatarUrl: user.avatarUrl,
       },
+      redirectUrl: redirectUrl || null, // 返回传入的redirectUrl，供前端使用
     });
   }
 

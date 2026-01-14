@@ -101,7 +101,7 @@ JSON
 }
 2.2 分类页 (CategorySplitView)
 1. 获取分类树
-描述: 获取左侧一级分类及右侧对应的二级分类列表。
+描述: 获取左侧一级分类、右侧对应的二级分类及三级分类列表。
 接口: GET /categories/tree
 响应:
 code
@@ -112,8 +112,25 @@ JSON
       "id": "cleaning",
       "name": "保洁清洗",
       "items": [
-        { "id": "daily_clean", "name": "日常保洁" },
-        { "id": "deep_clean", "name": "深度保洁" }
+        {
+          "id": "daily_clean",
+          "name": "日常保洁",
+          "items": [
+            { "id": "living_room_clean", "name": "客厅清洁" },
+            { "id": "bedroom_clean", "name": "卧室清洁" },
+            { "id": "kitchen_clean", "name": "厨房清洁" },
+            { "id": "bathroom_clean", "name": "卫生间清洁" }
+          ]
+        },
+        {
+          "id": "deep_clean",
+          "name": "深度保洁",
+          "items": [
+            { "id": "whole_house_deep", "name": "全屋深度清洁" },
+            { "id": "carpet_deep", "name": "地毯深度清洁" },
+            { "id": "curtain_clean", "name": "窗帘清洁" }
+          ]
+        }
       ]
     },
     ...
@@ -1011,6 +1028,44 @@ JSON
 鉴权: 请求头需携带 Authorization: Bearer <token> (登录/注册接口除外)。
 
 ## 2. 统一接口规范
+
+### 2.0 认证模块 (Auth API)
+
+#### POST /api/v1/auth/customer/login
+**功能说明**: 用户登录接口，支持登录后返回指定页面
+
+**请求参数**:
+```json
+{
+  "phone": "13800138000",
+  "password": "123456",
+  "redirectUrl": "/services/detail/cmkdmiddq001imj81qlovi335" // 可选，登录后返回的页面
+}
+```
+
+**响应数据**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "user_123",
+      "phone": "13800138000",
+      "nickname": "张三",
+      "role": "CUSTOMER",
+      "avatarUrl": "https://example.com/avatar.jpg"
+    },
+    "redirectUrl": "/services/detail/cmkdmiddq001imj81qlovi335" // 返回传入的返回URL
+  }
+}
+```
+
+**使用场景**: 
+- 用户在服务详情页点击预约时跳转登录
+- 登录成功后前端根据返回的 `redirectUrl` 跳转回原页面
+- 如果未传入 `redirectUrl`，则返回 `null`
 
 ### 2.1 首页模块 (Unified Home API)
 

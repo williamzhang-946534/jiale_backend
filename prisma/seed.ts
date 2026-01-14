@@ -126,6 +126,34 @@ async function main() {
         sortOrder: 4,
       },
     }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '养老护理',
+        icon: '👴',
+        sortOrder: 5,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '烹饪服务',
+        icon: '👨‍🍳',
+        sortOrder: 6,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '家教服务',
+        icon: '📚',
+        sortOrder: 7,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '宠物服务',
+        icon: '🐕',
+        sortOrder: 8,
+      },
+    }),
   ]);
 
   // 获取一级分类ID
@@ -133,6 +161,10 @@ async function main() {
   const babyCategory = categories[1];
   const movingCategory = categories[2];
   const repairCategory = categories[3];
+  const elderlyCategory = categories[4];
+  const cookingCategory = categories[5];
+  const tutoringCategory = categories[6];
+  const petCategory = categories[7];
 
   // 二级分类
   const subCategories = await Promise.all([
@@ -203,52 +235,358 @@ async function main() {
         sortOrder: 2,
       },
     }),
+    // 养老护理子分类
+    prisma.serviceCategory.create({
+      data: {
+        name: '日常照料',
+        parentId: elderlyCategory.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '医疗陪护',
+        parentId: elderlyCategory.id,
+        sortOrder: 2,
+      },
+    }),
+    // 烹饪服务子分类
+    prisma.serviceCategory.create({
+      data: {
+        name: '家常菜',
+        parentId: cookingCategory.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '营养餐',
+        parentId: cookingCategory.id,
+        sortOrder: 2,
+      },
+    }),
+    // 家教服务子分类
+    prisma.serviceCategory.create({
+      data: {
+        name: '小学辅导',
+        parentId: tutoringCategory.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '中学辅导',
+        parentId: tutoringCategory.id,
+        sortOrder: 2,
+      },
+    }),
+    // 宠物服务子分类
+    prisma.serviceCategory.create({
+      data: {
+        name: '宠物洗澡',
+        parentId: petCategory.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '宠物美容',
+        parentId: petCategory.id,
+        sortOrder: 2,
+      },
+    }),
   ]);
 
-  // 5. 创建服务
+  // 获取二级分类ID
+  const dailyCleaning = subCategories[0];
+  const deepCleaning = subCategories[1];
+  const maternityNurse = subCategories[3];
+  const childCareNurse = subCategories[4];
+  const smallMoving = subCategories[5];
+  const largeMoving = subCategories[6];
+  const applianceRepair = subCategories[7];
+  const plumbingInstallation = subCategories[8];
+
+  // 三级分类
+  const thirdLevelCategories = await Promise.all([
+    // 日常保洁的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '客厅清洁',
+        parentId: dailyCleaning.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '卧室清洁',
+        parentId: dailyCleaning.id,
+        sortOrder: 2,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '厨房清洁',
+        parentId: dailyCleaning.id,
+        sortOrder: 3,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '卫生间清洁',
+        parentId: dailyCleaning.id,
+        sortOrder: 4,
+      },
+    }),
+    // 深度保洁的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '全屋深度清洁',
+        parentId: deepCleaning.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '地毯深度清洁',
+        parentId: deepCleaning.id,
+        sortOrder: 2,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '窗帘清洁',
+        parentId: deepCleaning.id,
+        sortOrder: 3,
+      },
+    }),
+    // 月嫂服务的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '新生儿护理',
+        parentId: maternityNurse.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '产妇护理',
+        parentId: maternityNurse.id,
+        sortOrder: 2,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '母乳喂养指导',
+        parentId: maternityNurse.id,
+        sortOrder: 3,
+      },
+    }),
+    // 育儿嫂的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '婴幼儿看护',
+        parentId: childCareNurse.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '早教启蒙',
+        parentId: childCareNurse.id,
+        sortOrder: 2,
+      },
+    }),
+    // 小型搬家的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '单间搬家',
+        parentId: smallMoving.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '一室一厅搬家',
+        parentId: smallMoving.id,
+        sortOrder: 2,
+      },
+    }),
+    // 大型搬家的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '三室以上搬家',
+        parentId: largeMoving.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '别墅搬家',
+        parentId: largeMoving.id,
+        sortOrder: 2,
+      },
+    }),
+    // 家电维修的细分
+    prisma.serviceCategory.create({
+      data: {
+        name: '空调维修',
+        parentId: applianceRepair.id,
+        sortOrder: 1,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '冰箱维修',
+        parentId: applianceRepair.id,
+        sortOrder: 2,
+      },
+    }),
+    prisma.serviceCategory.create({
+      data: {
+        name: '洗衣机维修',
+        parentId: applianceRepair.id,
+        sortOrder: 3,
+      },
+    }),
+  ]);
+
+  // 5. 创建服务 - 三级分类直接作为服务商品
+  // 创建分类名称到ID的映射
+  const thirdLevelCategoryMap = new Map();
+  thirdLevelCategories.forEach(cat => {
+    thirdLevelCategoryMap.set(cat.name, cat.id);
+  });
+
   const services = await Promise.all([
-    // 保洁服务
+    // 日常保洁下的服务
     prisma.service.create({
       data: {
-        name: '2小时日常保洁',
-        categoryId: subCategories[0].id,
+        name: '客厅清洁',
+        categoryId: thirdLevelCategoryMap.get('客厅清洁'), // 关联到三级分类"客厅清洁"
         price: 80.00,
         unit: '次',
         images: ['https://example.com/cleaning1.jpg'],
-        description: '专业保洁人员上门服务，2小时深度清洁',
+        description: '专业保洁人员上门服务，2小时客厅深度清洁',
         tags: ['热门', '好评'],
         status: 'active',
       },
     }),
     prisma.service.create({
       data: {
-        name: '4小时深度保洁',
-        categoryId: subCategories[1].id,
-        price: 180.00,
+        name: '卧室清洁',
+        categoryId: thirdLevelCategoryMap.get('卧室清洁'), // 关联到三级分类"卧室清洁"
+        price: 60.00,
         unit: '次',
         images: ['https://example.com/cleaning2.jpg'],
-        description: '全屋深度清洁，包括厨房卫生间深度清洁',
+        description: '卧室深度清洁，包括衣柜擦拭、地面清洁',
         tags: ['特价', '推荐'],
         status: 'active',
       },
     }),
-    // 母婴服务
     prisma.service.create({
       data: {
-        name: '金牌月嫂26天',
-        categoryId: subCategories[3].id,
+        name: '厨房清洁',
+        categoryId: thirdLevelCategoryMap.get('厨房清洁'), // 关联到三级分类"厨房清洁"
+        price: 70.00,
+        unit: '次',
+        images: ['https://example.com/cleaning3.jpg'],
+        description: '厨房油烟机清洁、台面清洁、地面清洁',
+        tags: ['专业', '深度清洁'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '卫生间清洁',
+        categoryId: thirdLevelCategoryMap.get('卫生间清洁'), // 关联到三级分类"卫生间清洁"
+        price: 50.00,
+        unit: '次',
+        images: ['https://example.com/cleaning4.jpg'],
+        description: '卫生间专业清洁，消毒除臭',
+        tags: ['消毒', '除臭'],
+        status: 'active',
+      },
+    }),
+    // 深度保洁下的服务
+    prisma.service.create({
+      data: {
+        name: '全屋深度清洁',
+        categoryId: thirdLevelCategoryMap.get('全屋深度清洁'), // 关联到三级分类"全屋深度清洁"
+        price: 180.00,
+        unit: '次',
+        images: ['https://example.com/deep1.jpg'],
+        description: '全屋深度清洁，包括所有房间',
+        tags: ['深度', '全面'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '地毯深度清洁',
+        categoryId: thirdLevelCategoryMap.get('地毯深度清洁'), // 关联到三级分类"地毯深度清洁"
+        price: 120.00,
+        unit: '次',
+        images: ['https://example.com/deep2.jpg'],
+        description: '专业地毯深度清洁服务',
+        tags: ['专业', '深度清洁'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '窗帘清洁',
+        categoryId: thirdLevelCategoryMap.get('窗帘清洁'), // 关联到三级分类"窗帘清洁"
+        price: 100.00,
+        unit: '次',
+        images: ['https://example.com/deep3.jpg'],
+        description: '窗帘专业清洁服务',
+        tags: ['专业', '清洁'],
+        status: 'active',
+      },
+    }),
+    // 月嫂服务下的服务
+    prisma.service.create({
+      data: {
+        name: '新生儿护理',
+        categoryId: thirdLevelCategoryMap.get('新生儿护理'), // 关联到三级分类"新生儿护理"
         price: 8000.00,
         unit: '月',
         images: ['https://example.com/maternal1.jpg'],
-        description: '专业月嫂服务，24小时贴心照顾',
+        description: '专业月嫂服务，24小时贴心照顾新生儿',
         tags: ['金牌', '专业'],
         status: 'active',
       },
     }),
     prisma.service.create({
       data: {
-        name: '育儿嫂服务',
-        categoryId: subCategories[4].id,
+        name: '产妇护理',
+        categoryId: thirdLevelCategoryMap.get('产妇护理'), // 关联到三级分类"产妇护理"
+        price: 6000.00,
+        unit: '月',
+        images: ['https://example.com/maternal2.jpg'],
+        description: '专业产妇护理，产后恢复指导',
+        tags: ['专业', '经验丰富'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '母乳喂养指导',
+        categoryId: thirdLevelCategoryMap.get('母乳喂养指导'), // 关联到三级分类"母乳喂养指导"
+        price: 200.00,
+        unit: '次',
+        images: ['https://example.com/maternal3.jpg'],
+        description: '专业母乳喂养指导服务',
+        tags: ['专业', '指导'],
+        status: 'active',
+      },
+    }),
+    // 育儿嫂下的服务
+    prisma.service.create({
+      data: {
+        name: '婴幼儿看护',
+        categoryId: thirdLevelCategoryMap.get('婴幼儿看护'), // 关联到三级分类"婴幼儿看护"
         price: 150.00,
         unit: '天',
         images: ['https://example.com/baby1.jpg'],
@@ -257,11 +595,23 @@ async function main() {
         status: 'active',
       },
     }),
-    // 搬家服务
     prisma.service.create({
       data: {
-        name: '小型搬家',
-        categoryId: subCategories[5].id,
+        name: '早教启蒙',
+        categoryId: thirdLevelCategoryMap.get('早教启蒙'), // 关联到三级分类"早教启蒙"
+        price: 180.00,
+        unit: '天',
+        images: ['https://example.com/baby2.jpg'],
+        description: '专业早教启蒙服务',
+        tags: ['教育', '启蒙'],
+        status: 'active',
+      },
+    }),
+    // 小型搬家下的服务
+    prisma.service.create({
+      data: {
+        name: '单间搬家',
+        categoryId: thirdLevelCategoryMap.get('单间搬家'), // 关联到三级分类"单间搬家"
         price: 300.00,
         unit: '车',
         images: ['https://example.com/moving1.jpg'],
@@ -270,16 +620,77 @@ async function main() {
         status: 'active',
       },
     }),
-    // 维修服务
+    prisma.service.create({
+      data: {
+        name: '一室一厅搬家',
+        categoryId: thirdLevelCategoryMap.get('一室一厅搬家'), // 关联到三级分类"一室一厅搬家"
+        price: 500.00,
+        unit: '车',
+        images: ['https://example.com/moving2.jpg'],
+        description: '适合一室一厅标准户型搬家',
+        tags: ['标准服务'],
+        status: 'active',
+      },
+    }),
+    // 大型搬家下的服务
+    prisma.service.create({
+      data: {
+        name: '三室以上搬家',
+        categoryId: thirdLevelCategoryMap.get('三室以上搬家'), // 关联到三级分类"三室以上搬家"
+        price: 800.00,
+        unit: '车',
+        images: ['https://example.com/moving3.jpg'],
+        description: '适合三室以上大户型搬家',
+        tags: ['大型', '专业'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '别墅搬家',
+        categoryId: thirdLevelCategoryMap.get('别墅搬家'), // 关联到三级分类"别墅搬家"
+        price: 1200.00,
+        unit: '车',
+        images: ['https://example.com/moving4.jpg'],
+        description: '别墅专业搬家服务',
+        tags: ['豪华', '专业'],
+        status: 'active',
+      },
+    }),
+    // 家电维修下的服务
     prisma.service.create({
       data: {
         name: '空调维修',
-        categoryId: subCategories[7].id,
+        categoryId: thirdLevelCategoryMap.get('空调维修'), // 关联到三级分类"空调维修"
         price: 120.00,
         unit: '次',
         images: ['https://example.com/repair1.jpg'],
         description: '专业空调维修，上门服务',
         tags: ['快速响应'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '冰箱维修',
+        categoryId: thirdLevelCategoryMap.get('冰箱维修'), // 关联到三级分类"冰箱维修"
+        price: 100.00,
+        unit: '次',
+        images: ['https://example.com/repair2.jpg'],
+        description: '专业冰箱维修，上门检测维修',
+        tags: ['专业维修'],
+        status: 'active',
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: '洗衣机维修',
+        categoryId: thirdLevelCategoryMap.get('洗衣机维修'), // 关联到三级分类"洗衣机维修"
+        price: 80.00,
+        unit: '次',
+        images: ['https://example.com/repair3.jpg'],
+        description: '专业洗衣机维修服务',
+        tags: ['维修', '专业'],
         status: 'active',
       },
     }),

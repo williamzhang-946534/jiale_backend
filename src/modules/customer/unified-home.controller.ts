@@ -296,14 +296,16 @@ export class UnifiedHomeController {
       include: {
         children: true
       },
-      orderBy: { sortOrder: 'asc' }
+      orderBy: { sortOrder: 'asc' },
+      take: 8 // 限制返回8个分类
     });
 
     return categories.map(category => ({
       id: category.id,
       name: category.name,
       icon: category.icon || '📦',
-      color: this.getCategoryColor(category.name)
+      color: this.getCategoryColor(category.name),
+      type: this.getCategoryType(category.name)
     }));
   }
 
@@ -464,9 +466,29 @@ export class UnifiedHomeController {
       '母婴护理': 'bg-pink-50',
       '养老护理': 'bg-blue-50',
       '烹饪服务': 'bg-orange-50',
-      '家教服务': 'bg-purple-50'
+      '家教服务': 'bg-purple-50',
+      '搬家运输': 'bg-yellow-50',
+      '维修安装': 'bg-red-50',
+      '宠物服务': 'bg-green-50'
     };
     return colorMap[categoryName] || 'bg-gray-50';
+  }
+
+  private getCategoryType(categoryName: string): 'fixed' | 'custom' {
+    // 固定服务：标准化、可定价的服务
+    const fixedServices = ['保洁清洗', '母婴护理', '搬家运输', '维修安装', '宠物服务'];
+    
+    // 定制服务：需要个性化定制、价格浮动的服务
+    const customServices = ['养老护理', '烹饪服务', '家教服务'];
+    
+    if (fixedServices.includes(categoryName)) {
+      return 'fixed';
+    } else if (customServices.includes(categoryName)) {
+      return 'custom';
+    }
+    
+    // 默认为固定服务
+    return 'fixed';
   }
 
   private getServiceType(serviceId: string): string {

@@ -14,7 +14,7 @@ export class UnifiedServiceController {
 
   @Get('services/detail/:serviceId')
   async getServiceDetail(@Param('serviceId') serviceId: string) {
-    const service = await this.prisma.service.findUnique({
+    let service = await this.prisma.service.findUnique({
       where: { id: serviceId },
       include: { 
         category: true,
@@ -22,8 +22,19 @@ export class UnifiedServiceController {
       }
     });
 
+    // 如果没找到服务，尝试作为分类ID查找该分类下的第一个服务
     if (!service) {
-      return ok({ data: null });
+      service = await this.prisma.service.findFirst({
+        where: {
+          categoryId: serviceId,
+          status: 'active'
+        },
+        include: { category: true }
+      });
+    }
+
+    if (!service) {
+      return ok(null);
     }
 
     // 获取该服务的服务者数量
@@ -44,15 +55,18 @@ export class UnifiedServiceController {
       categoryId: service.categoryId,
       categoryName: service.category.name,
       price: service.price.toNumber(),
+      originalPrice: this.generateOriginalPrice(service.price.toNumber()),
+      isSpecial: this.generateIsSpecial(service.id),
       unit: service.unit,
       images: service.images,
+      details: this.generateDetailImages(serviceId),
       description: service.description || '',
       tags: service.tags,
       specifications,
-      details: this.generateDetailImages(serviceId),
       promises: this.generatePromises(serviceId),
       process: this.generateProcessSteps(serviceId),
       providerCount,
+      sales: this.generateSales(service.id),
       rating: 4.8, // 可以从评价表计算
       status: service.status
     });
@@ -152,8 +166,7 @@ export class UnifiedServiceController {
       orderBy: this.getSortOrder(query.sort)
     });
 
-    return ok({
-      data: services.map(service => ({
+    return ok(services.map(service => ({
         id: service.id,
         name: service.name,
         categoryName: service.category.name,
@@ -164,8 +177,7 @@ export class UnifiedServiceController {
         rating: 4.5, // 可以从评价表计算
         providerCount: 0, // 可以从服务者表计算
         description: service.description
-      }))
-    });
+      })));
   }
 
   @Get('providers')
@@ -305,5 +317,25 @@ export class UnifiedServiceController {
       'price_desc': { expectedSalary: 'desc' }
     };
     return sortMap[sort || 'comprehensive'];
+  }
+
+  // 生成原价（比现价高20-50%）
+  private generateOriginalPrice(currentPrice: number): number {
+    const markup = 1.2 + Math.random() * 0.3; // 1.2-1.5倍
+    return Math.round(currentPrice * markup);
+  }
+
+  // 生成是否特价（30%概率是特价）
+  private generateIsSpecial(serviceId: string): boolean {
+    // 可以根据服务ID的hash值来决定，确保结果一致
+    const hash = serviceId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return hash % 10 < 3; // 30%概率
+  }
+
+  // 生成月销量（50-500之间）
+  private generateSales(serviceId: string): number {
+    // 根据服务ID生成稳定的销量数据
+    const hash = serviceId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return 50 + (hash % 450); // 50-500之间
   }
 }
