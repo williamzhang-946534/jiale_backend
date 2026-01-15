@@ -80,21 +80,22 @@ export class OrderService {
 
     const serviceDate = new Date(input.serviceDate);
 
-    const conflict = await this.prisma.order.findFirst({
-      where: {
-        userId: input.userId,
-        serviceDate,
-        serviceTime: input.serviceTime,
-        status: {
-          in: [OrderStatus.PENDING, OrderStatus.ACCEPTED, OrderStatus.STARTED],
-        },
-      },
-    });
-    if (conflict) {
-      throw new BadRequestException({
-        message: '该时间已有订单',
-      });
-    }
+    // 暂时移除同一时间订单冲突检查，允许同一时间创建多个订单
+    // const conflict = await this.prisma.order.findFirst({
+    //   where: {
+    //     userId: input.userId,
+    //     serviceDate,
+    //     serviceTime: input.serviceTime,
+    //     status: {
+    //       in: [OrderStatus.PENDING, OrderStatus.ACCEPTED, OrderStatus.STARTED],
+    //     },
+    //   },
+    // });
+    // if (conflict) {
+    //   throw new BadRequestException({
+    //     message: '该时间已有订单',
+    //   });
+    // }
 
     const orderNo = `ORD-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
 
@@ -104,7 +105,7 @@ export class OrderService {
         userId: input.userId,
         serviceId: input.serviceId,
         addressId: input.addressId,
-        status: OrderStatus.PENDING,
+        status: OrderStatus.PENDING_PAYMENT, // 新订单初始状态为待支付
         serviceDate,
         serviceTime: input.serviceTime,
         originalPrice,
@@ -128,12 +129,19 @@ export class OrderService {
       userId: params.userId,
     };
     if (params.status && params.status !== 'all') {
-      where.status = params.status as OrderStatus;
+      // 将小写状态转换为大写枚举值
+      const statusUpper = params.status.toUpperCase();
+      where.status = statusUpper as OrderStatus;
     }
 
     const [list, total] = await Promise.all([
       this.prisma.order.findMany({
         where,
+        include: {
+          service: true,
+          provider: true,
+          address: true,
+        },
         orderBy: { createdAt: 'desc' },
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
@@ -206,6 +214,7 @@ export class OrderService {
       const paidOrder = await tx.order.update({
         where: { id: order.id },
         data: {
+          status: OrderStatus.PENDING, // 支付成功后状态改为待接单
           paidAmount: order.totalPrice,
           paidAt: new Date(),
         },
@@ -241,6 +250,8 @@ export class OrderService {
     userId: string;
     orderId: string;
     traceId: string;
+    reason: 'auto_cancel' | 'manual_cancel';
+    description: string;
   }) {
     const order = await this.prisma.order.findUnique({
       where: { id: input.orderId },
@@ -262,13 +273,19 @@ export class OrderService {
       return;
     }
 
+    // PENDING_PAYMENT状态的订单取消时，直接取消
+    // PENDING状态的订单取消时，需要考虑退款逻辑
+    const remark = input.reason === 'auto_cancel' 
+      ? `系统自动取消: ${input.description}`
+      : `用户取消: ${input.description}`;
+
     await this.changeStatusWithLog({
       orderId: order.id,
       oldStatus: order.status,
       newStatus: OrderStatus.CANCELED,
       operatorId: input.userId,
       operatorRole: UserRole.CUSTOMER,
-      remark: '用户取消',
+      remark,
     });
   }
 

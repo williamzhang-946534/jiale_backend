@@ -133,6 +133,9 @@ model Address {
   city        String
   district    String
   detail      String
+  fullAddress String?  // 完整地址字符串
+  postalCode  String?  // 邮政编码
+  tag         String?  // 地址标签
   latitude    Float?
   longitude   Float?
   isDefault   Boolean  @default(false)
@@ -382,12 +385,13 @@ enum ProviderType {
 }
 
 enum OrderStatus {
-  PENDING
-  ACCEPTED
-  ARRIVED
-  STARTED
-  COMPLETED
-  CANCELED
+  PENDING_PAYMENT    // 待支付
+  PENDING           // 待接单（已支付）
+  ACCEPTED          // 已接单
+  ARRIVED           // 已到达
+  STARTED           // 服务中
+  COMPLETED         // 已完成
+  CANCELED          // 已取消
 }
 
 enum TransactionType {

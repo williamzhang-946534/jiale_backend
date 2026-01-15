@@ -68,11 +68,17 @@ export class CustomerOrderController {
   }
 
   @Post('orders/:id/cancel')
-  async cancel(@Req() req: any, @Param('id') id: string) {
+  async cancel(
+    @Req() req: any, 
+    @Param('id') id: string,
+    @Body() body: { reason: 'auto_cancel' | 'manual_cancel'; description: string }
+  ) {
     await this.orderService.cancelOrder({
       userId: req.user.id,
       orderId: id,
       traceId: req.traceId,
+      reason: body.reason,
+      description: body.description,
     });
     return ok(null);
   }

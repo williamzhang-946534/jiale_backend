@@ -34,6 +34,9 @@ export class ProfileController {
     city: string;
     district: string;
     detail: string;
+    fullAddress?: string;
+    postalCode?: string;
+    tag?: string;
     latitude?: number;
     longitude?: number;
     isDefault?: boolean;
@@ -45,6 +48,9 @@ export class ProfileController {
       city,
       district,
       detail,
+      fullAddress,
+      postalCode,
+      tag,
       latitude,
       longitude,
       isDefault = false,
@@ -67,6 +73,9 @@ export class ProfileController {
         city,
         district,
         detail,
+        fullAddress,
+        postalCode,
+        tag,
         latitude,
         longitude,
         isDefault,
@@ -87,6 +96,9 @@ export class ProfileController {
       city?: string;
       district?: string;
       detail?: string;
+      fullAddress?: string;
+      postalCode?: string;
+      tag?: string;
       latitude?: number;
       longitude?: number;
       isDefault?: boolean;
@@ -99,6 +111,9 @@ export class ProfileController {
       city,
       district,
       detail,
+      fullAddress,
+      postalCode,
+      tag,
       latitude,
       longitude,
       isDefault,
@@ -123,19 +138,24 @@ export class ProfileController {
       });
     }
 
+    // 构建更新数据对象，过滤掉undefined值
+    const updateData: any = {};
+    if (contactName !== undefined) updateData.contactName = contactName;
+    if (phone !== undefined) updateData.phone = phone;
+    if (province !== undefined) updateData.province = province;
+    if (city !== undefined) updateData.city = city;
+    if (district !== undefined) updateData.district = district;
+    if (detail !== undefined) updateData.detail = detail;
+    if (fullAddress !== undefined) updateData.fullAddress = fullAddress;
+    if (postalCode !== undefined) updateData.postalCode = postalCode;
+    if (tag !== undefined) updateData.tag = tag;
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
+    if (isDefault !== undefined) updateData.isDefault = isDefault;
+
     const address = await this.prisma.address.update({
       where: { id },
-      data: {
-        contactName,
-        phone,
-        province,
-        city,
-        district,
-        detail,
-        latitude,
-        longitude,
-        isDefault,
-      },
+      data: updateData,
     });
 
     return ok(address);
