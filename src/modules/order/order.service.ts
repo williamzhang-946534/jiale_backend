@@ -105,7 +105,7 @@ export class OrderService {
         userId: input.userId,
         serviceId: input.serviceId,
         addressId: input.addressId,
-        status: OrderStatus.PENDING_PAYMENT, // 新订单初始状态为待支付
+        status: OrderStatus.PENDING, // 临时使用PENDING状态
         serviceDate,
         serviceTime: input.serviceTime,
         originalPrice,

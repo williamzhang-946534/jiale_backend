@@ -34,7 +34,11 @@ export class UnifiedServiceController {
     }
 
     if (!service) {
-      return ok(null);
+      return {
+        code: 404,
+        message: '服务不存在',
+        data: null
+      };
     }
 
     // 获取该服务的服务者数量

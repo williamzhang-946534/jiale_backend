@@ -14,7 +14,44 @@ export class ProfileController {
     const user = await this.prisma.user.findUnique({
       where: { id: req.user.id },
     });
-    return ok(user);
+
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    // 获取用户统计信息
+    const [totalOrders, completedOrders, totalSpent] = await Promise.all([
+      this.prisma.order.count({
+        where: { userId: req.user.id }
+      }),
+      this.prisma.order.count({
+        where: { 
+          userId: req.user.id,
+          status: 'COMPLETED'
+        }
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          userId: req.user.id,
+          status: 'COMPLETED'
+        },
+        _sum: {
+          totalPrice: true
+        }
+      })
+    ]);
+
+    const stats = {
+      totalOrders,
+      completedOrders,
+      totalSpent: totalSpent._sum.totalPrice?.toNumber() || 0
+    };
+
+    return ok({
+      ...user,
+      points: 1500, // 临时测试值
+      stats
+    });
   }
 
   @Get('addresses')

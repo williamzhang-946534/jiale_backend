@@ -16,6 +16,7 @@ model User {
   avatarUrl         String?
   role              UserRole               @default(CUSTOMER)
   level             Int                    @default(1)
+  points            Int                    @default(0)
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
   walletBalance     Decimal                @default(0.0) @db.Decimal(18, 2)
