@@ -9,6 +9,7 @@ import { DecimalUtils } from './utils/decimal-utils';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { AuthController } from './controllers/auth.controller';
+import { PublicController } from './controllers/public.controller';
 
 @Global()
 @Module({
@@ -17,7 +18,7 @@ import { AuthController } from './controllers/auth.controller';
       secret: process.env.JWT_SECRET || 'change-me',
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, PublicController],
   providers: [
     PrismaService,
     RedisService,
