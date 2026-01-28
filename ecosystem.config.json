@@ -1,7 +1,7 @@
 {
   "apps": [{
     "name": "jiale-backend",
-    "script": "dist/src/main.js",
+    "script": "dist/main.js",
     "instances": "max",
     "exec_mode": "cluster",
     "env": {
