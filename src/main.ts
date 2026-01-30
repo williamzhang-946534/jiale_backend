@@ -12,6 +12,39 @@ async function bootstrap() {
   // /api/v1, /api/admin/v1
   app.setGlobalPrefix('api');
 
+  // CORS配置 - 生产环境安全的Capacitor WebView策略
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  app.enableCors({
+    origin: (origin, callback) => {
+      // 允许的Origin列表
+      const allowedOrigins = [
+        'https://localhost',
+        'capacitor://localhost',
+        'http://localhost'
+      ];
+      
+      // 开发环境允许本地调试
+      if (!isProduction) {
+        allowedOrigins.push('http://localhost:3000', 'http://localhost:8080');
+      }
+      
+      // 生产环境安全检查：如果origin为undefined（某些移动端请求）或在白名单中，则允许
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        // 静默拒绝，不抛出错误避免日志污染
+        callback(null, false);
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400 // 24小时缓存预检请求结果
+  });
+
   app.useGlobalFilters(app.get(HttpExceptionFilter));
   app.useGlobalInterceptors(app.get(LoggingInterceptor));
   app.useGlobalPipes(new ZodValidationPipe());
