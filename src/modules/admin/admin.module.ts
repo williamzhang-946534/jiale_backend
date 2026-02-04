@@ -14,6 +14,10 @@ import { AdminUserManagementController } from './admin-user-management.controlle
 import { AdminMarketingController } from './marketing.controller';
 import { ProviderStatsController } from './provider-stats.controller';
 import { SystemSettingsController } from './system-settings.controller';
+import { AdminEnterpriseController } from './enterprise.controller';
+import { AdminPremiumController } from './premium.controller';
+import { NewcomerAdminController } from './newcomer.controller';
+import { FlashSaleAdminController } from './flash-sale.controller';
 
 @Module({
   imports: [SharedModule, FinanceModule],
@@ -30,6 +34,10 @@ import { SystemSettingsController } from './system-settings.controller';
     AdminMarketingController,
     ProviderStatsController,
     SystemSettingsController,
+    AdminEnterpriseController,
+    AdminPremiumController,
+    NewcomerAdminController,
+    FlashSaleAdminController,
   ],
   providers: [ProviderVerificationService],
 })

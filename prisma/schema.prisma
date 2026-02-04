@@ -26,6 +26,7 @@ model User {
   transactions      Transaction[]
   coupons           UserCoupon[]
   favoriteProviders UserFavoriteProvider[]
+  premiumApplications PremiumApplication[]
 }
 
 model Provider {
@@ -111,6 +112,8 @@ model Service {
   id             String                 @id @default(cuid())
   name           String
   categoryId     String
+  premiumServiceCategoryId String?
+  enterpriseCategoryId String?
   price          Decimal                @db.Decimal(18, 2)
   unit           String
   images         String[]
@@ -122,6 +125,10 @@ model Service {
   flashSales     FlashSale[]
   orders         Order[]
   category       ServiceCategory        @relation(fields: [categoryId], references: [id])
+  enterpriseCategory EnterpriseServiceCategory? @relation(fields: [enterpriseCategoryId], references: [id])
+  premiumServiceCategory PremiumServiceCategory? @relation(fields: [premiumServiceCategoryId], references: [id])
+  newcomerOffers NewcomerOffer[]
+  flashSaleProducts FlashSaleProduct[]
   specifications ServiceSpecification[]
 }
 
@@ -217,6 +224,7 @@ model CouponTemplate {
   updatedAt     DateTime     @updatedAt
   categoryIds   String[]
   description   String?
+  scene         String       @default("general")
   userLimit     Int          @default(1)
   userCoupons   UserCoupon[]
 }
@@ -345,6 +353,108 @@ model FlashSale {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model NewcomerOffer {
+  id            String   @id @default(cuid())
+  serviceId     String
+  originalPrice Decimal  @db.Decimal(18, 2)
+  newcomerPrice Decimal  @db.Decimal(18, 2)
+  stockLimit    Int
+  claimedCount  Int      @default(0)
+  sortOrder     Int      @default(1)
+  status        String   @default("active")
+  createdAt     Int      // Unix timestamp (milliseconds)
+  updatedAt     Int      // Unix timestamp (milliseconds)
+  service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model FlashSaleSession {
+  id        String   @id @default(cuid())
+  date      Int      // Unix timestamp (milliseconds)
+  startTime String
+  endTime   String
+  status    String   @default("upcoming")
+  sortOrder Int      @default(1)
+  createdAt Int      // Unix timestamp (milliseconds)
+  updatedAt Int      // Unix timestamp (milliseconds)
+  products  FlashSaleProduct[]
+}
+
+model FlashSaleProduct {
+  id         String           @id @default(cuid())
+  sessionId  String
+  serviceId  String
+  flashPrice Decimal          @db.Decimal(18, 2)
+  stockTotal Int
+  stockSold  Int              @default(0)
+  sortOrder  Int              @default(1)
+  status     String           @default("active")
+  createdAt  Int              // Unix timestamp (milliseconds)
+  updatedAt  Int              // Unix timestamp (milliseconds)
+  session    FlashSaleSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  service    Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model EnterpriseServiceCategory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(1)
+  status      String   @default("active")
+  createdAt   Int      // Unix timestamp (milliseconds)
+  updatedAt   Int      // Unix timestamp (milliseconds)
+  services    Service[]
+}
+
+model EnterpriseInquiry {
+  id           String   @id @default(cuid())
+  companyName  String
+  contactName  String
+  contactPhone String
+  serviceIds   String[]
+  area         Int
+  address      String
+  requirements String?
+  status       String   @default("pending")
+  assignedSalesId String?
+  createdAt    Int      // Unix timestamp (milliseconds)
+  updatedAt    Int      // Unix timestamp (milliseconds)
+}
+
+model PremiumServiceCategory {
+  id                   String   @id @default(cuid())
+  name                 String
+  tag                  String?
+  description          String?
+  image                String?
+  minServiceHours      Int      @default(1)
+  advanceBookingDays   Int      @default(0)
+  depositAmount        Decimal  @default(0.0) @db.Decimal(18, 2)
+  sortOrder            Int      @default(1)
+  status               String   @default("active")
+  createdAt            Int      // Unix timestamp (milliseconds)
+  updatedAt            Int      // Unix timestamp (milliseconds)
+  applications         PremiumApplication[]
+  services             Service[]
+}
+
+model PremiumApplication {
+  id              String   @id @default(cuid())
+  userId          String
+  serviceCategoryId String
+  contactName     String
+  contactPhone    String
+  contactEmail    String?
+  requirements    String?
+  budgetRange     String?
+  status          String   @default("pending")
+  matchedButlerId String?
+  createdAt       Int      // Unix timestamp (milliseconds)
+  updatedAt       Int      // Unix timestamp (milliseconds)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceCategory PremiumServiceCategory @relation(fields: [serviceCategoryId], references: [id], onDelete: Cascade)
 }
 
 model SystemSettings {

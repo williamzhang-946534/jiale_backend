@@ -21,10 +21,24 @@ export class AdminCategoryController {
 
   @Get('categories')
   async getCategories() {
-    const categories = await this.prisma.serviceCategory.findMany({
+    // 获取所有一级分类（parentId为null）
+    const topLevelCategories = await this.prisma.serviceCategory.findMany({
+      where: {
+        parentId: null
+      },
       include: {
-        parent: true,
-        children: true,
+        children: {
+          include: {
+            _count: {
+              select: {
+                services: true,
+              },
+            },
+          },
+          orderBy: {
+            sortOrder: 'asc',
+          },
+        },
         _count: {
           select: {
             services: true,
@@ -36,7 +50,26 @@ export class AdminCategoryController {
       },
     });
 
-    return ok({ data: categories });
+    // 转换数据结构，确保只返回一级分类，二级分类在children中
+    const formattedCategories = topLevelCategories.map(category => ({
+      id: category.id,
+      name: category.name,
+      icon: category.icon,
+      sortOrder: category.sortOrder,
+      parentId: category.parentId,
+      serviceCount: category._count.services,
+      children: category.children.map(child => ({
+        id: child.id,
+        name: child.name,
+        icon: child.icon,
+        sortOrder: child.sortOrder,
+        parentId: child.parentId,
+        serviceCount: child._count.services,
+        // 二级分类不能有子分类，所以不包含children
+      })),
+    }));
+
+    return ok(formattedCategories);
   }
 
   @Post('categories')
@@ -55,6 +88,11 @@ export class AdminCategoryController {
       });
       if (!parent) {
         throw new Error('父分类不存在');
+      }
+      
+      // 检查父分类是否已经是二级分类（不能有parentId）
+      if (parent.parentId) {
+        throw new Error('二级分类不能添加子分类');
       }
     }
 
@@ -100,6 +138,11 @@ export class AdminCategoryController {
       });
       if (!parent) {
         throw new Error('父分类不存在');
+      }
+      
+      // 检查父分类是否已经是二级分类（不能有parentId）
+      if (parent.parentId) {
+        throw new Error('二级分类不能添加子分类');
       }
     }
 
