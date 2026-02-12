@@ -321,7 +321,7 @@ export class UnifiedHomeController {
       name: offer.name,
       price: offer.price.toNumber(),
       originalPrice: offer.price.toNumber() * 1.2,
-      image: offer.image,
+      image: offer.images?.[0] || '',  // 🔄 修复字段名，取第一张图片
       discount: 0.8,
       unit: offer.unit,
       tags: [...offer.tags, '限时特惠']
@@ -329,19 +329,22 @@ export class UnifiedHomeController {
   }
 
   private async getFeaturedServices() {
-    // 获取推荐服务（可以是评分高的、订单多的等）
+    // 获取真正的推荐服务
     const services = await this.prisma.service.findMany({
-      where: { status: 'active' },
+      where: { 
+        isFeatured: true,    // 🎯 使用后台设置的推荐标识
+        status: 'active' 
+      },
       include: { category: true },
-      orderBy: { createdAt: 'desc' },
-      take: 5
+      orderBy: { priority: 'desc' },  // 🎯 按权重排序
+      take: 10  // 🎯 返回10个推荐服务
     });
 
     return services.map(service => ({
       id: service.id,
-      isFeatured: true,
+      isFeatured: service.isFeatured,  // ✅ 使用真实数据
       name: service.name,
-      rating: 4.8,
+      rating: 4.8,  // 🔄 可以从评价表计算
       price: service.price.toNumber(),
       image: service.images[0] || ''
     }));
@@ -406,58 +409,30 @@ export class UnifiedHomeController {
   }
 
   private async getPackageDeals() {
-    // 获取套餐专区数据（组合服务套餐）
-    return [
-      {
-        id: 'new_mom_package',
-        name: '新手妈妈套餐',
-        description: '月嫂+产后康复+营养指导',
-        originalPrice: 8999,
-        discountPrice: 6999,
-        discount: 22,
-        duration: '30天',
-        services: [
-          { name: '金牌月嫂', days: 26 },
-          { name: '产后康复', sessions: 10 },
-          { name: '营养指导', sessions: 5 }
-        ],
-        badge: '热销',
-        image: '/packages/new-mom.jpg'
+    // 从数据库查询套餐服务
+    const packageServices = await this.prisma.service.findMany({
+      where: { 
+        isPackage: true,
+        status: 'active' 
       },
-      {
-        id: 'deep_cleaning_package',
-        name: '全屋深度清洁',
-        description: '厨房+卫生间+客厅+卧室全清洁',
-        originalPrice: 599,
-        discountPrice: 399,
-        discount: 33,
-        duration: '4小时',
-        services: [
-          { name: '厨房深度清洁', area: '15㎡' },
-          { name: '卫生间消毒', area: '10㎡' },
-          { name: '客厅整理', area: '20㎡' },
-          { name: '卧室清洁', area: '15㎡' }
-        ],
-        badge: '限时特惠',
-        image: '/packages/deep-cleaning.jpg'
-      },
-      {
-        id: 'elderly_care_package',
-        name: '老人照护套餐',
-        description: '日常照料+医疗陪护+康复训练',
-        originalPrice: 4999,
-        discountPrice: 3999,
-        discount: 20,
-        duration: '15天',
-        services: [
-          { name: '日常照料', hours: 120 },
-          { name: '医疗陪护', sessions: 3 },
-          { name: '康复训练', sessions: 5 }
-        ],
-        badge: '推荐',
-        image: '/packages/elderly-care.jpg'
-      }
-    ];
+      include: { category: true },
+      orderBy: { priority: 'desc' },
+      take: 10
+    });
+
+    // 转换为前端期望的格式
+    return packageServices.map(service => ({
+      id: service.id,
+      name: service.name,
+      description: service.description || '',
+      originalPrice: service.originalPrice?.toNumber() || service.price.toNumber(),
+      discountPrice: service.price.toNumber(),
+      discount: service.discount ? Math.round((1 - service.discount.toNumber()) * 100) : 0,
+      duration: service.serviceDuration ? `${service.serviceDuration}分钟` : '自定义',
+      services: service.packageItems || [],
+      badge: service.badge,
+      image: service.images[0] || ''
+    }));
   }
 
   private getCategoryColor(categoryName: string): string {

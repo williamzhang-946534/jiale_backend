@@ -69,6 +69,7 @@ export class PremiumController {
       throw new BadRequestException('服务不存在');
     }
 
+    const now = Math.floor(Date.now() / 1000); // 转换为秒级时间戳
     const application = await this.prisma.premiumApplication.create({
       data: {
         userId: req.user.id,
@@ -79,6 +80,8 @@ export class PremiumController {
         requirements: body.requirements,
         budgetRange: body.budgetRange,
         status: 'pending',
+        createdAt: now,
+        updatedAt: now,
       },
     });
 

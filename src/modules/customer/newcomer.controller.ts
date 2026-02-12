@@ -140,7 +140,7 @@ export class NewcomerController {
       offerId?: string;
       serviceId: string;
       addressId: string;
-      serviceDate: string;
+      serviceDate: number;
       serviceTime: string;
     },
   ) {

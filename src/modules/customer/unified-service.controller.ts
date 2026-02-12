@@ -54,25 +54,64 @@ export class UnifiedServiceController {
     const specifications = this.generateSpecifications(serviceId);
 
     return ok({
+      // === 基础信息 ===
       id: service.id,
       name: service.name,
+      description: service.description || '',
+      
+      // === 分类信息 ===
       categoryId: service.categoryId,
       categoryName: service.category.name,
+      subCategoryId: service.subCategoryId,      // 🆕 真实存储的子分类ID
+      
+      // === 价格信息 ===
       price: service.price.toNumber(),
-      originalPrice: this.generateOriginalPrice(service.price.toNumber()),
-      isSpecial: this.generateIsSpecial(service.id),
+      originalPrice: service.originalPrice?.toNumber(),
+      discount: service.discount?.toNumber(),
+      isPackage: service.isPackage,
+      packageItems: service.packageItems,
       unit: service.unit,
+      
+      // === 媒体资源 ===
       images: service.images,
-      details: this.generateDetailImages(serviceId),
-      description: service.description || '',
-      tags: service.tags,
-      specifications,
-      promises: this.generatePromises(serviceId),
-      process: this.generateProcessSteps(serviceId),
+      details: service.serviceDetails,             // 🆕 真实存储的详情图片
+      
+      // === 评价统计 ===
+      rating: 4.8,
+      sales: service.salesCount,                   // 🆕 真实存储的销量
       providerCount,
-      sales: this.generateSales(service.id),
-      rating: 4.8, // 可以从评价表计算
-      status: service.status
+      
+      // === 标签分类 ===
+      tags: service.tags,
+      type: service.type,                          // 🆕 真实存储的服务类型
+      
+      // === 服务详情 ===
+      promises: service.servicePromises,            // 🆕 真实存储的服务承诺
+      process: service.serviceProcess,              // 🆕 真实存储的服务流程
+      specifications: this.generateSpecifications(serviceId),
+      
+      // === 营销标识 ===
+      isSpecial: service.isSpecial,                 // 🆕 真实存储的特价标识
+      isFeatured: service.isFeatured,               // 🆕 真实存储的精选标识
+      isRecommended: service.isRecommended,         // 🆕 真实存储的推荐标识
+      badge: service.badge,
+      priority: service.priority,                   // 🆕 真实存储的排序权重
+      
+      // === 服务规则 ===
+      location: service.location,
+      serviceArea: service.serviceArea,
+      minBookingTime: service.minBookingTime,
+      maxBookingTime: service.maxBookingTime,
+      serviceDuration: service.serviceDuration,
+      cancelDeadline: service.cancelDeadline,       // 🆕 真实存储的取消截止时间
+      
+      // === 服务保障 ===
+      insurance: service.insurance,
+      guarantee: service.guarantee,
+      afterSales: service.afterSales,
+      
+      // === 状态信息 ===
+      status: service.status,
     });
   }
 

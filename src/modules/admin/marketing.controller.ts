@@ -257,11 +257,11 @@ export class AdminMarketingController {
   @Post('special-offers')
   async createSpecialOffer(@Body() body: {
     name: string;
-    category: string;
+    categoryId: string;    // 🔄 统一使用 categoryId
     price: number;
     unit: string;
     rating: number;
-    image: string;
+    images: string[];      // 🔄 统一使用 images 数组
     description: string;
     providerCount?: number;
     tags?: string[];
@@ -269,11 +269,11 @@ export class AdminMarketingController {
   }) {
     const {
       name,
-      category,
+      categoryId,    // 🔄
       price,
       unit,
       rating,
-      image,
+      images,        // 🔄
       description,
       providerCount = 0,
       tags = [],
@@ -283,11 +283,11 @@ export class AdminMarketingController {
     const specialOffer = await this.prisma.specialOffer.create({
       data: {
         name,
-        category,
+        categoryId,    // 🔄
         price,
         unit,
         rating,
-        image,
+        images,        // 🔄
         description,
         providerCount,
         tags,
@@ -303,11 +303,11 @@ export class AdminMarketingController {
     @Param('id') id: string,
     @Body() body: {
       name?: string;
-      category?: string;
+      categoryId?: string;    // 🔄 统一使用 categoryId
       price?: number;
       unit?: string;
       rating?: number;
-      image?: string;
+      images?: string[];      // 🔄 统一使用 images 数组
       description?: string;
       providerCount?: number;
       tags?: string[];

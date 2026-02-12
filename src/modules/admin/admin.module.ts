@@ -15,6 +15,7 @@ import { AdminMarketingController } from './marketing.controller';
 import { ProviderStatsController } from './provider-stats.controller';
 import { SystemSettingsController } from './system-settings.controller';
 import { AdminEnterpriseController } from './enterprise.controller';
+import { AdminPremiumSimpleController } from './premium-simple.controller';
 import { AdminPremiumController } from './premium.controller';
 import { NewcomerAdminController } from './newcomer.controller';
 import { FlashSaleAdminController } from './flash-sale.controller';
@@ -35,6 +36,7 @@ import { FlashSaleAdminController } from './flash-sale.controller';
     ProviderStatsController,
     SystemSettingsController,
     AdminEnterpriseController,
+    AdminPremiumSimpleController,
     AdminPremiumController,
     NewcomerAdminController,
     FlashSaleAdminController,

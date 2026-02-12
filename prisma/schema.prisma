@@ -115,13 +115,43 @@ model Service {
   premiumServiceCategoryId String?
   enterpriseCategoryId String?
   price          Decimal                @db.Decimal(18, 2)
+  originalPrice  Decimal?              @db.Decimal(18, 2) // 🆕 原价（用于套餐）
+  discount       Decimal?               @db.Decimal(5, 2)  // 🆕 折扣率（0.1-1.0）
+  isPackage      Boolean                @default(false)     // 🆕 是否为套餐
+  packageItems    Json?                                      // 🆕 套餐项目详情
   unit           String
   images         String[]
   description    String?
   tags           String[]
+  providerCount  Int                    @default(0)  // 🆕 可提供服务人数
+  location       String?                 // 🆕 主要服务区域
+  serviceDuration Int?                   // 🆕 标准服务时长（分钟）
+  minBookingTime Int?                    // 🆕 最少提前预约时间（小时）
+  badge          String?                 // 🆕 服务徽章
+  serviceArea    String[]                // 🆕 详细服务区域
+  maxBookingTime Int?                    // 🆕 最远提前预约时间（小时）
+  insurance      String?                 // 🆕 保险保障
+  guarantee      String[]                // 🆕 服务保证
+  afterSales     String?                 // 🆕 售后服务
   status         String                 @default("active")
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
+  
+  // 🆕 补充前端需要的字段
+  subCategoryId  String?                 // 子分类ID
+  type           String?                 @default("STANDARD") // 服务类型
+  isFeatured     Boolean                @default(false)      // 是否精选
+  isRecommended  Boolean                @default(false)      // 是否推荐
+  priority       Int?                    @default(0)          // 排序权重
+  cancelDeadline Int?                    @default(24)        // 免费取消截止时间（小时）
+  
+  // 🆕 真实存储的详情字段
+  servicePromises String[]              @default([])         // 服务承诺
+  serviceProcess   Json?                                      // 服务流程
+  serviceDetails   String[]              @default([])         // 详情图片
+  isSpecial        Boolean               @default(false)      // 特价标识
+  salesCount       Int                   @default(0)          // 销量
+  
   flashSales     FlashSale[]
   orders         Order[]
   category       ServiceCategory        @relation(fields: [categoryId], references: [id])
@@ -299,11 +329,11 @@ model AuditLog {
 model SpecialOffer {
   id            String   @id @default(cuid())
   name          String
-  category      String
+  categoryId    String                 // 🔄 统一使用 categoryId
   price         Decimal  @db.Decimal(18, 2)
   unit          String
   rating        Decimal  @db.Decimal(3, 2)
-  image         String
+  images        String[]               // 🔄 统一使用 images 数组
   description   String
   providerCount Int      @default(0)
   tags          String[]
@@ -364,8 +394,8 @@ model NewcomerOffer {
   claimedCount  Int      @default(0)
   sortOrder     Int      @default(1)
   status        String   @default("active")
-  createdAt     Int      // Unix timestamp (milliseconds)
-  updatedAt     Int      // Unix timestamp (milliseconds)
+  createdAt     Int      // Unix timestamp (seconds)
+  updatedAt     Int      // Unix timestamp (seconds)
   service       Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
 

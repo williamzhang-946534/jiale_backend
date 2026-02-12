@@ -962,11 +962,11 @@ async function main() {
     prisma.specialOffer.create({
       data: {
         name: '厨房深度清洁',
-        category: '保洁清洗',
+        categoryId: '保洁清洗',    // 🔄 修复字段名
         price: 99.00,
         unit: '次',
         rating: 4.8,
-        image: 'https://example.com/kitchen-cleaning.jpg',
+        images: ['https://example.com/kitchen-cleaning.jpg'],  // 🔄 修复为数组,
         description: '专业厨房油烟机、灶台、水槽深度清洁，去除顽固油污',
         providerCount: 25,
         tags: ['热门', '好评', '限时特惠'],
@@ -977,11 +977,11 @@ async function main() {
     prisma.specialOffer.create({
       data: {
         name: '母婴护理套餐',
-        category: '母婴护理',
+        categoryId: '母婴护理',    // 🔄 修复字段名
         price: 299.00,
         unit: '天',
         rating: 4.9,
-        image: 'https://example.com/maternity-care.jpg',
+        images: ['https://example.com/maternity-care.jpg'],  // 🔄 修复为数组
         description: '专业月嫂服务，新生儿护理+产后康复指导',
         providerCount: 18,
         tags: ['金牌服务', '经验丰富', '包满意'],
@@ -992,11 +992,11 @@ async function main() {
     prisma.specialOffer.create({
       data: {
         name: '老人陪伴服务',
-        category: '养老护理',
+        categoryId: '养老护理',    // 🔄 修复字段名,
         price: 150.00,
         unit: '小时',
         rating: 4.7,
-        image: 'https://example.com/elderly-care.jpg',
+        images: ['https://example.com/elderly-care.jpg'],  // 🔄 修复为数组,
         description: '贴心陪伴老人，聊天散步，协助日常活动',
         providerCount: 32,
         tags: ['耐心细致', '口碑好', '推荐'],
@@ -1007,11 +1007,11 @@ async function main() {
     prisma.specialOffer.create({
       data: {
         name: '家庭烹饪',
-        category: '烹饪服务',
+        categoryId: '烹饪服务',    // 🔄 修复字段名
         price: 200.00,
         unit: '餐',
         rating: 4.6,
-        image: 'https://example.com/home-cooking.jpg',
+        images: ['https://example.com/home-cooking.jpg'],  // 🔄 修复为数组,
         description: '营养师定制家常菜，健康美味，满足全家口味',
         providerCount: 15,
         tags: ['营养均衡', '口味地道', '卫生放心'],
@@ -1022,11 +1022,11 @@ async function main() {
     prisma.specialOffer.create({
       data: {
         name: '全屋大扫除',
-        category: '保洁清洗',
+        categoryId: '保洁清洗',    // 🔄 修复字段名
         price: 388.00,
         unit: '次',
         rating: 4.8,
-        image: 'https://example.com/full-house-cleaning.jpg',
+        images: ['https://example.com/full-house-cleaning.jpg'],  // 🔄 修复为数组,
         description: '客厅、卧室、厨房、卫生间全屋深度清洁',
         providerCount: 40,
         tags: ['团购优惠', '服务周到', '效率高'],

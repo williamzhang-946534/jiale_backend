@@ -157,7 +157,7 @@ export class FlashSaleAdminController {
       throw new BadRequestException('该时间段已存在闪购场次');
     }
 
-    const now = Date.now();
+    const now = Math.floor(Date.now() / 1000); // 转换为秒级时间戳
     const session = await this.prisma.flashSaleSession.create({
       data: {
         date,
@@ -268,7 +268,7 @@ export class FlashSaleAdminController {
     if (body.endTime !== undefined) updateData.endTime = body.endTime;
     if (body.sortOrder !== undefined) updateData.sortOrder = body.sortOrder;
     if (body.status !== undefined) updateData.status = body.status;
-    updateData.updatedAt = Date.now();
+    updateData.updatedAt = Math.floor(Date.now() / 1000);
 
     const session = await this.prisma.flashSaleSession.update({
       where: { id },
@@ -441,7 +441,7 @@ export class FlashSaleAdminController {
       throw new BadRequestException('该服务在此场次中已存在');
     }
 
-    const now = Date.now();
+    const now = Math.floor(Date.now() / 1000); // 转换为秒级时间戳
     const product = await this.prisma.flashSaleProduct.create({
       data: {
         sessionId,
@@ -536,6 +536,7 @@ export class FlashSaleAdminController {
     if (body.flashPrice !== undefined) updateData.flashPrice = body.flashPrice;
     if (body.stockTotal !== undefined) updateData.stockTotal = body.stockTotal;
     if (body.sortOrder !== undefined) updateData.sortOrder = body.sortOrder;
+    updateData.updatedAt = Math.floor(Date.now() / 1000);
 
     const product = await this.prisma.flashSaleProduct.update({
       where: { id },

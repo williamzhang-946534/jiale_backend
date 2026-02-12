@@ -95,6 +95,7 @@ export class EnterpriseController {
       throw new BadRequestException('参数不完整');
     }
 
+    const now = Math.floor(Date.now() / 1000); // 转换为秒级时间戳
     const inquiry = await this.prisma.enterpriseInquiry.create({
       data: {
         companyName: body.companyName,
@@ -106,6 +107,8 @@ export class EnterpriseController {
         requirements: body.requirements,
         status: 'pending',
         assignedSalesId: null,
+        createdAt: now,
+        updatedAt: now,
       },
     });
 

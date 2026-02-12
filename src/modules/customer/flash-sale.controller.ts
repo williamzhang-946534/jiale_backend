@@ -13,8 +13,9 @@ import { ok } from '../shared/types/api-response';
 import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
 import { RoleGuard } from '../shared/guards/role.guard';
 
-function toHHmm(d: Date) {
-  return d.toTimeString().slice(0, 5);
+function toHHmm(d: Date | number) {
+  const date = typeof d === 'number' ? new Date(d) : d;
+  return date.toTimeString().slice(0, 5);
 }
 
 @ApiTags('闪购秒杀')
@@ -26,9 +27,9 @@ export class FlashSaleController {
   @ApiOperation({ summary: '闪购场次列表' })
   @ApiResponse({ status: 200, description: '成功' })
   async sessions() {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const now = Date.now();
+    const startOfDay = new Date(new Date(now).setHours(0, 0, 0, 0)).getTime();
+    const endOfDay = new Date(new Date(now).setHours(23, 59, 59, 999)).getTime();
 
     const sessions = await this.prisma.flashSaleSession.findMany({
       where: {
@@ -78,9 +79,9 @@ export class FlashSaleController {
   @ApiOperation({ summary: '当前活跃场次' })
   @ApiResponse({ status: 200, description: '成功' })
   async active() {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    const now = Date.now();
+    const startOfDay = new Date(new Date(now).setHours(0, 0, 0, 0)).getTime();
+    const endOfDay = new Date(new Date(now).setHours(23, 59, 59, 999)).getTime();
 
     const sessions = await this.prisma.flashSaleSession.findMany({
       where: {

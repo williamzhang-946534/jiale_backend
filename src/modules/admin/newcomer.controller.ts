@@ -121,6 +121,8 @@ export class NewcomerAdminController {
       throw new BadRequestException('该服务已存在专享活动');
     }
 
+    const now = Math.floor(Date.now() / 1000); // 转换为秒级时间戳
+    
     const offer = await this.prisma.newcomerOffer.create({
       data: {
         serviceId,
@@ -130,6 +132,8 @@ export class NewcomerAdminController {
         claimedCount: 0,
         sortOrder,
         status,
+        createdAt: now,
+        updatedAt: now,
       },
       include: {
         service: {
@@ -208,6 +212,7 @@ export class NewcomerAdminController {
     if (body.stockLimit !== undefined) updateData.stockLimit = body.stockLimit;
     if (body.sortOrder !== undefined) updateData.sortOrder = body.sortOrder;
     if (body.status !== undefined) updateData.status = body.status;
+    updateData.updatedAt = Math.floor(Date.now() / 1000);
 
     const offer = await this.prisma.newcomerOffer.update({
       where: { id },
