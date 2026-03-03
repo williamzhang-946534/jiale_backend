@@ -298,3 +298,30 @@ check-provider-status.js
 check-prisma-client.js
 debug-provider-status.js
 generate-password-hash.js
+
+# Project specific - files_to_delete folder
+files_to_delete/
+backups/
+uploads/
+
+# Test scripts and temporary files
+test-*.js
+debug-*.js
+check-*.js
+simple-*.js
+analyze-*.js
+diagnose-*.js
+verify-*.js
+test_*.sql
+check_*.sql
+update_*.sql
+fix_*.sql
+test.jpg
+test.txt
+test.png
+test.json
+
+# Database backups
+*.sql.bak
+*.backup.sql
+jiale_backend_data.sql
