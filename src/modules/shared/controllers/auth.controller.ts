@@ -44,7 +44,7 @@ export class AuthController {
       throw new UnauthorizedException('密码错误');
     }
 
-    const token = this.authService.signToken(user.id, 'CUSTOMER');
+    const token = this.authService.signToken(user.id, user.role);
 
     return ok({
       token,

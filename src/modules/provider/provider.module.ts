@@ -8,6 +8,10 @@ import { ProviderStatsController } from './provider-stats.controller';
 import { ProviderAuthController } from './provider-auth.controller';
 import { ProviderProfileController } from './provider-profile.controller';
 import { ProviderWalletController } from './provider-wallet.controller';
+import { BankCardService } from './bank-card.service';
+import { BankCardController } from './bank-card.controller';
+import { EnhancedWithdrawalService } from './enhanced-withdrawal.service';
+import { WithdrawalController } from './withdrawal.controller';
 
 @Module({
   imports: [SharedModule],
@@ -15,6 +19,8 @@ import { ProviderWalletController } from './provider-wallet.controller';
     ProviderVerificationService,
     ProviderStatsService,
     ProviderStatsScheduler,
+    BankCardService,
+    EnhancedWithdrawalService,
   ],
   controllers: [
     ProviderDashboardController,
@@ -22,10 +28,14 @@ import { ProviderWalletController } from './provider-wallet.controller';
     ProviderProfileController,
     ProviderWalletController,
     ProviderStatsController,
+    BankCardController,
+    WithdrawalController,
   ],
   exports: [
     ProviderVerificationService,
     ProviderStatsService,
+    BankCardService,
+    EnhancedWithdrawalService,
   ],
 })
 export class ProviderModule {}

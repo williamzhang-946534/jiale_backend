@@ -90,89 +90,63 @@ export class ProviderWalletController {
   async getWallet(@Req() req: any) {
     const provider = await this.prisma.provider.findFirst({
       where: { userId: req.user.id },
+      include: {
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: {
+            order: {
+              include: {
+                service: true,
+                user: {
+                  select: {
+                    nickname: true,
+                    phone: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        withdrawals: {
+          where: { status: 'PENDING' },
+        },
+      },
     });
 
     if (!provider) {
       throw new Error('服务者账号不存在');
     }
 
-    // 计算待提现金额（PENDING + PROCESSING 状态的提现申请总和）
-    const pendingWithdrawalsData = await (this.prisma as any).withdrawalRecord.aggregate({
+    // 🎯 使用实时计算的准确今日收入
+    const accurateTodayEarnings = await this.providerStats.getAccurateTodayEarnings(provider.id);
+
+    // 🎯 获取银行卡信息
+    const bankCardsResult = await this.bankCardService.getBankCards(req.user.id);
+    const bankCards = (bankCardsResult.data as any[]) || [];
+    const defaultBankCard = bankCards.find((card: any) => card.isDefault);
+
+    // 🎯 统一数据源：使用 ProviderDailyStats 表计算月收入
+    const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const monthlyIncome = await this.prisma.providerDailyStats.aggregate({
       where: {
         providerId: provider.id,
-        status: { in: ['PENDING', 'PROCESSING'] }
-      },
-      _sum: { amount: true }
-    });
-
-    const pendingWithdrawals = pendingWithdrawalsData._sum.amount?.toNumber?.() || 0;
-
-    // 获取交易记录
-    const transactions = await this.prisma.transaction.findMany({
-      where: { providerId: provider.id },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-      include: {
-        order: {
-          include: {
-            service: true,
-            user: true,
-          },
-        },
-      },
-    });
-
-    // 获取今日收入（从交易记录实时计算）
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    const todayTransactions = await this.prisma.transaction.aggregate({
-      where: {
-        providerId: provider.id,
-        type: 'INCOME',
-        createdAt: {
-          gte: today,
-          lt: tomorrow,
-        },
-      },
-      _sum: {
-        amount: true,
-      },
-    });
-
-    const accurateTodayEarnings = todayTransactions._sum.amount || 0;
-
-    // 获取本月收入（基于交易记录计算，确保准确性）
-    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthlyTransactions = await this.prisma.transaction.aggregate({
-      where: {
-        providerId: provider.id,
-        type: 'INCOME',
-        createdAt: {
+        date: {
           gte: currentMonthStart,
-          lte: today,
         },
       },
       _sum: {
-        amount: true,
-      },
-      _count: {
-        id: true,
+        earnings: true,
+        orderCount: true,
       },
     });
 
-    const accurateMonthlyEarnings = monthlyTransactions._sum.amount || 0;
-    const monthlyOrderCount = monthlyTransactions._count.id || 0;
-
-    // 保留原有的统计数据用于调试
+    // 📊 获取本月详细统计信息（用于调试和验证）
     const monthlyStats = await this.prisma.providerDailyStats.findMany({
       where: {
         providerId: provider.id,
         date: {
           gte: currentMonthStart,
-          lte: today,
         },
       },
       orderBy: {
@@ -180,82 +154,80 @@ export class ProviderWalletController {
       },
     });
 
+    // 🎯 构建丰富的钱包信息
     const walletInfo = {
-      // 基本信息
+      // 基础信息
       id: provider.id,
       name: provider.name,
       phone: provider.phone,
-      
-      // 余额信息
-      walletBalance: provider.walletBalance.toString(),
-      withdrawableBalance: provider.withdrawableBalance.toString(),
-      
-      // 收入统计
-      todayEarnings: accurateTodayEarnings,
-      monthlyEarnings: accurateMonthlyEarnings, // 使用基于交易记录的准确数据
-      totalRevenue: provider.totalRevenue.toString(),
-      totalEarnings: provider.totalRevenue.toString(), // 别名
-      
-      // 订单统计
+      walletBalance: provider.walletBalance,
+      withdrawableBalance: provider.withdrawableBalance,
+      todayEarnings: accurateTodayEarnings, // 🎯 使用实时计算的准确今日收入
       totalOrders: provider.totalOrders,
-      monthlyOrders: monthlyOrderCount, // 使用基于交易记录的准确数据
+      totalRevenue: provider.totalRevenue,
       
-      // 提现相关
-      pendingWithdrawals: pendingWithdrawals.toString(),
-      frozenAmount: 0, // 冻结金额
-      
-      // 银行卡信息
-      bankCardsCount: 0, // 需要从银行卡表查询
-      defaultBankCard: null, // 默认银行卡
-      
-      // 交易记录
-      transactions: transactions.map((transaction: any) => {
-        const isToday = new Date(transaction.createdAt).toDateString() === new Date().toDateString();
-        const isIncome = transaction.type === 'INCOME';
-        const isWithdrawal = transaction.type === 'WITHDRAWAL';
-        const isRefund = transaction.type === 'REFUND';
-        
-        return {
+      // 🆕 新增字段
+      monthlyEarnings: monthlyIncome._sum.earnings || 0,
+      monthlyOrders: monthlyIncome._sum.orderCount || 0, // 🆕 新增月订单数
+      pendingWithdrawals: provider.withdrawals.reduce((sum, w) => sum + w.amount.toNumber(), 0),
+      frozenAmount: 0, // 🆕 冻结金额，当前为0
+      totalEarnings: provider.totalRevenue, // 🆕 总收入
+      bankCardsCount: bankCards.length, // 🆕 银行卡数量
+      defaultBankCard: defaultBankCard ? { // 🆕 默认银行卡信息
+        id: defaultBankCard.id,
+        bankName: defaultBankCard.bankName,
+        maskedCardNumber: defaultBankCard.maskedCardNumber
+      } : null,
+      transactions: provider.transactions.map((transaction) => {
+        // 🎨 丰富的交易信息
+        const enrichedTransaction = {
+          // 基础信息
           id: transaction.id,
           type: transaction.type,
-          amount: transaction.amount.toString(),
-          beforeBalance: transaction.beforeBalance.toString(),
-          afterBalance: transaction.afterBalance.toString(),
+          amount: transaction.amount,
+          beforeBalance: transaction.beforeBalance,
+          afterBalance: transaction.afterBalance,
           createdAt: transaction.createdAt,
-          order: transaction.order
-            ? {
-                id: transaction.order.id,
-                status: transaction.order.status,
-                totalAmount: transaction.order.totalPrice.toString(),
-                service: {
-                  id: transaction.order.service.id,
-                  name: transaction.order.service.name,
-                  category: transaction.order.service.category || 'STANDARD',
-                  price: transaction.order.service.price.toString()
-                },
-                user: {
-                  nickname: transaction.order.user.nickname,
-                  phone: transaction.order.user.phone
-                }
-              }
-            : null,
+          
+          // 🎨 关联信息
+          order: transaction.order ? {
+            id: transaction.order.id,
+            status: transaction.order.status,
+            totalAmount: transaction.order.totalPrice || 0,
+            service: transaction.order.service ? {
+              id: transaction.order.service.id,
+              name: transaction.order.service.name,
+              category: transaction.order.service.type || 'other',
+              price: transaction.order.service.price,
+            } : null,
+            user: transaction.order.user ? {
+              nickname: transaction.order.user.nickname,
+              phone: transaction.order.user.phone,
+            } : null,
+          } : null,
+          
+          // 🎨 交易描述和状态
           description: this.getTransactionDescription(transaction),
           status: this.getTransactionStatus(transaction),
-          icon: this.getTransactionIcon(transaction),
-          color: this.getTransactionColor(transaction),
-          isToday,
-          isIncome,
-          isWithdrawal,
-          isRefund
+          icon: this.getTransactionIcon(transaction.type),
+          color: this.getTransactionColor(transaction.type),
+          
+          // 🆕 额外标识
+          isToday: new Date(transaction.createdAt).toDateString() === new Date().toDateString(),
+          isIncome: transaction.type === 'INCOME',
+          isWithdrawal: transaction.type === 'WITHDRAWAL',
+          isRefund: transaction.type === 'REFUND'
         };
+        
+        return enrichedTransaction;
       }),
       
-      // 调试信息
+      // 📊 调试信息
       debug: {
         monthlyStats: monthlyStats,
         accurateTodayEarnings,
-        currentMonthStart
-      }
+        currentMonthStart,
+      },
     };
 
     return ok(walletInfo);
@@ -578,13 +550,8 @@ export class ProviderWalletController {
         // 不支持的周期参数
         throw new Error('不支持的周期参数，仅支持 week、month、year');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('钱包图表查询失败:', error);
-      
-      // 检查是否是参数错误
-      if (error?.message && error.message.includes('不支持的周期参数')) {
-        throw error; // 重新抛出参数错误
-      }
       
       // 如果查询失败，返回空数据
       let labels: string[];
@@ -606,7 +573,7 @@ export class ProviderWalletController {
           const day = date.getDate().toString().padStart(2, '0');
           labels.push(`${month}-${day}`);
         }
-      } else if (period === 'year') {
+      } else {
         labels = [];
         const date = new Date();
         for (let i = 11; i >= 0; i--) {
@@ -614,9 +581,6 @@ export class ProviderWalletController {
           currentDate.setMonth(date.getMonth() - i);
           labels.push(`${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`);
         }
-      } else {
-        // 不支持的周期，直接抛出错误
-        throw new Error('不支持的周期参数，仅支持 week、month、year');
       }
       
       return ok({
@@ -644,58 +608,21 @@ export class ProviderWalletController {
         }))
       });
     }
-  }
-
-  // 辅助方法
-  private getTransactionDescription(transaction: any): string {
-    switch (transaction.type) {
-      case 'INCOME':
-        return `完成订单：${transaction.order?.service?.name || '服务'}`;
-      case 'WITHDRAWAL':
-        return `提现到 ${transaction.bankCard?.bankName || '银行卡'}`;
-      case 'REFUND':
-        return `退款 - ${transaction.order?.service?.name || '服务'}`;
-      default:
-        return '其他交易';
-    }
-  }
-
-  private getTransactionStatus(transaction: any): string {
-    switch (transaction.type) {
-      case 'INCOME':
-        return '已完成';
-      case 'WITHDRAWAL':
-        return transaction.status || 'pending';
-      case 'REFUND':
-        return 'completed';
-      default:
-        return 'unknown';
-    }
-  }
-
-  private getTransactionIcon(transaction: any): string {
-    switch (transaction.type) {
-      case 'INCOME':
-        return '💰';
-      case 'WITHDRAWAL':
-        return '💸';
-      case 'REFUND':
-        return '🔄';
-      default:
-        return '❓';
-    }
-  }
-
-  private getTransactionColor(transaction: any): string {
-    switch (transaction.type) {
-      case 'INCOME':
-        return '#10B981';
-      case 'WITHDRAWAL':
-        return '#F59E0B';
-      case 'REFUND':
-        return '#EF4444';
-      default:
-        return '#6B7280';
+        averageEarning: 0,
+        theme: {
+          primary: '#4F46E5',
+          success: '#10B981',
+          warning: '#F59E0B',
+          danger: '#EF4444'
+        },
+        dataPoints: labels.map(label => ({
+          day: label,
+          value: 0,
+          formattedValue: '¥0',
+          hasData: false,
+          percentage: 0
+        }))
+      });
     }
   }
 
@@ -721,7 +648,7 @@ export class ProviderWalletController {
       return {
         direction: 'stable',
         percentage: 0,
-        description: '数据不足，无法分析趋势',
+        description: '数据不足，无法计算趋势',
         confidence: 0,
         details: {
           average: 0,
@@ -733,46 +660,53 @@ export class ProviderWalletController {
       };
     }
 
-    // 计算基础统计信息
+    // 计算基本统计信息
     const average = nonZeroValues.reduce((sum, val) => sum + val, 0) / nonZeroValues.length;
     const max = Math.max(...nonZeroValues);
     const min = Math.min(...nonZeroValues);
-    
-    // 计算方差
     const variance = nonZeroValues.reduce((sum, val) => sum + Math.pow(val - average, 2), 0) / nonZeroValues.length;
     
-    // 计算增长率（比较前半段和后半段的平均值）
-    const midPoint = Math.floor(nonZeroValues.length / 2);
-    const firstHalf = nonZeroValues.slice(0, midPoint);
-    const secondHalf = nonZeroValues.slice(midPoint);
+    // 计算趋势（基于最近3天vs之前3天的平均值）
+    const recentDays = nonZeroValues.slice(-3);
+    const previousDays = nonZeroValues.slice(-6, -3);
     
-    const firstHalfAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
-    const secondHalfAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+    if (previousDays.length === 0) {
+      return {
+        direction: 'stable',
+        percentage: 0,
+        description: '数据不足，无法计算趋势',
+        confidence: 0.3,
+        details: { average, max, min, variance, growthRate: 0 }
+      };
+    }
+
+    const recentAvg = recentDays.reduce((sum, val) => sum + val, 0) / recentDays.length;
+    const previousAvg = previousDays.reduce((sum, val) => sum + val, 0) / previousDays.length;
     
-    const growthRate = firstHalfAvg > 0 ? ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100 : 0;
+    const growthRate = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg) * 100 : 0;
     
-    // 判断趋势方向和置信度
+    // 确定趋势方向和描述
     let direction: 'up' | 'down' | 'stable';
-    let confidence: number;
     let description: string;
+    let confidence: number;
     
     if (Math.abs(growthRate) < 5) {
       direction = 'stable';
-      confidence = Math.max(0, 100 - Math.abs(growthRate) * 2);
       description = '收入保持稳定';
+      confidence = 0.8;
     } else if (growthRate > 0) {
       direction = 'up';
-      confidence = Math.min(100, Math.abs(growthRate) * 1.5);
-      description = `收入呈上升趋势，增长 ${growthRate.toFixed(1)}%`;
+      description = `收入呈上升趋势，增长${Math.round(growthRate)}%`;
+      confidence = Math.min(0.9, 0.5 + (Math.abs(growthRate) / 50));
     } else {
       direction = 'down';
-      confidence = Math.min(100, Math.abs(growthRate) * 1.5);
-      description = `收入呈下降趋势，下降 ${Math.abs(growthRate).toFixed(1)}%`;
+      description = `收入呈下降趋势，下降${Math.round(Math.abs(growthRate))}%`;
+      confidence = Math.min(0.9, 0.5 + (Math.abs(growthRate) / 50));
     }
 
     return {
       direction,
-      percentage: Math.abs(growthRate),
+      percentage: Math.round(growthRate),
       description,
       confidence,
       details: {
@@ -780,8 +714,74 @@ export class ProviderWalletController {
         max,
         min,
         variance: Math.round(variance),
-        growthRate: Math.round(growthRate * 10) / 10
+        growthRate: Math.round(growthRate)
       }
     };
+  }
+
+  /**
+   * 📝 获取交易描述 - 增强版本，提供更详细的描述
+   */
+  private getTransactionDescription(transaction: any): string {
+    switch (transaction.type) {
+      case 'INCOME':
+        if (transaction.order) {
+          return `完成订单：${transaction.order.service?.name || '服务'}`;
+        }
+        return '订单收入';
+      case 'WITHDRAWAL':
+        return '提现到银行卡';
+      case 'REFUND':
+        return '订单退款';
+      case 'BONUS':
+        return '平台奖励';
+      case 'PENALTY':
+        return '平台罚款';
+      default:
+        return '其他交易';
+    }
+  }
+
+  /**
+   * 🏷️ 获取交易状态
+   */
+  private getTransactionStatus(transaction: any): string {
+    // 根据交易类型和金额判断状态
+    if (transaction.type === 'INCOME') {
+      return '已完成';
+    } else if (transaction.type === 'WITHDRAWAL') {
+      return '处理中';
+    } else if (transaction.type === 'REFUND') {
+      return '已退款';
+    }
+    return '已完成';
+  }
+
+  /**
+   * 🎨 获取交易图标
+   */
+  private getTransactionIcon(type: string): string {
+    const iconMap: { [key: string]: string } = {
+      'INCOME': '💰',
+      'WITHDRAWAL': '💸',
+      'REFUND': '🔄',
+      'BONUS': '🎁',
+      'PENALTY': '⚠️'
+    };
+    return iconMap[type] || '📄';
+  }
+
+  /**
+   * 🎨 获取交易颜色
+   */
+  private getTransactionColor(type: string): string {
+    const colorMap: { [key: string]: string } = {
+      'INCOME': '#10B981',  // 绿色
+      'WITHDRAWAL': '#F59E0B',  // 橙色
+      'REFUND': '#EF4444',  // 红色
+      'BONUS': '#8B5CF6',  // 紫色
+      'PENALTY': '#EF4444'  // 红色
+    };
+    return colorMap[type] || '#6B7280';  // 默认灰色
   }
 }

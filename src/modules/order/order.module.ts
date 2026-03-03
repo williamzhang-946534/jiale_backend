@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { SharedModule } from '../shared/shared.module';
+import { ProviderModule } from '../provider/provider.module';
 import { OrderService } from './order.service';
 import { CustomerOrderController } from './order.customer.controller';
 import { ProviderOrderController } from './order.provider.controller';
@@ -7,7 +8,7 @@ import { AdminOrderController } from './order.admin.controller';
 import { IdempotencyMiddleware } from '../shared/middleware/idempotency.middleware';
 
 @Module({
-  imports: [SharedModule],
+  imports: [SharedModule, ProviderModule],
   providers: [OrderService],
   controllers: [
     CustomerOrderController,

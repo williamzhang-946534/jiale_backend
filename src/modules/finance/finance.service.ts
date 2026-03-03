@@ -54,6 +54,7 @@ export class FinanceService {
         data: {
           providerId: provider.id,
           amount: amt,
+          actualAmount: amt,
           status: WithdrawalStatus.PENDING,
           bankInfo,
         },
@@ -87,7 +88,8 @@ export class FinanceService {
     id: string;
     action: 'approve' | 'reject';
   }) {
-    const withdrawal = await this.prisma.withdrawal.findUnique({
+    // 使用withdrawal_records表而不是旧的withdrawal表
+    const withdrawal = await (this.prisma as any).withdrawalRecord.findUnique({
       where: { id: params.id },
     });
     if (!withdrawal) {
@@ -95,37 +97,139 @@ export class FinanceService {
     }
 
     if (params.action === 'reject') {
-      if (
-        withdrawal.status === WithdrawalStatus.REJECTED ||
-        withdrawal.status === WithdrawalStatus.APPROVED
-      ) {
+      if (withdrawal.status === 'REJECTED' || withdrawal.status === 'COMPLETED') {
         return withdrawal;
       }
-      return this.prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: { status: WithdrawalStatus.REJECTED },
+      
+      // 拒绝提现：恢复可提现余额
+      return this.prisma.$transaction(async (tx) => {
+        // 更新提现状态
+        const updatedWithdrawal = await (tx as any).withdrawalRecord.update({
+          where: { id: withdrawal.id },
+          data: { 
+            status: 'REJECTED',
+            failureReason: '管理员拒绝',
+            processedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        // 恢复服务者的可提现余额
+        const amount = Number(withdrawal.amount);
+        await tx.provider.update({
+          where: { id: withdrawal.providerId },
+          data: {
+            withdrawableBalance: {
+              increment: amount,
+            },
+          },
+        });
+
+        // 创建冲正交易记录
+        await tx.transaction.create({
+          data: {
+            type: TransactionType.REFUND,
+            amount: amount,
+            beforeBalance: Number(withdrawal.actualAmount) + amount,
+            afterBalance: Number(withdrawal.actualAmount) + amount + amount,
+            providerId: withdrawal.providerId,
+            withdrawalId: withdrawal.id,
+          },
+        });
+
+        // 记录审计日志
+        await this.audit.log({
+          module: 'finance',
+          action: 'withdrawal_reject',
+          operatorId: params.adminId,
+          operatorRole: 'ADMIN',
+          entityId: withdrawal.id,
+          detail: {
+            amount,
+            reason: '管理员拒绝',
+          },
+        });
+
+        return updatedWithdrawal;
       });
     }
 
-    if (withdrawal.status === WithdrawalStatus.PENDING) {
-      return this.prisma.withdrawal.update({
+    // 审核通过逻辑
+    if (withdrawal.status === 'PENDING') {
+      return (this.prisma as any).withdrawalRecord.update({
         where: { id: withdrawal.id },
         data: {
-          status: WithdrawalStatus.PENDING_REVIEW,
-          firstReviewerId: params.adminId,
+          status: 'PROCESSING', // 使用PROCESSING而不是PENDING_REVIEW
+          processedAt: new Date(),
+          updatedAt: new Date(),
         },
       });
     }
-    if (withdrawal.status === WithdrawalStatus.PENDING_REVIEW) {
-      return this.prisma.withdrawal.update({
-        where: { id: withdrawal.id },
-        data: {
-          status: WithdrawalStatus.APPROVED,
-          secondReviewerId: params.adminId,
-          reviewedAt: new Date(),
-        },
+    
+    if (withdrawal.status === 'PROCESSING') {
+      return this.prisma.$transaction(async (tx) => {
+        // 最终审核通过：减少总钱包余额
+        const updatedWithdrawal = await (tx as any).withdrawalRecord.update({
+          where: { id: withdrawal.id },
+          data: {
+            status: 'COMPLETED', // 使用COMPLETED而不是APPROVED
+            processedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+
+        // 获取服务者当前余额
+        const provider = await tx.provider.findUnique({
+          where: { id: withdrawal.providerId },
+          select: { walletBalance: true }
+        });
+
+        if (!provider) {
+          throw new NotFoundException({ message: '服务者不存在' });
+        }
+
+        const beforeBalance = Number(provider.walletBalance);
+        const amount = Number(withdrawal.amount);
+        const afterBalance = beforeBalance - amount;
+
+        // 减少服务者的总钱包余额（关键修复！）
+        await tx.provider.update({
+          where: { id: withdrawal.providerId },
+          data: {
+            walletBalance: afterBalance,
+          },
+        });
+
+        // 创建交易记录
+        await tx.transaction.create({
+          data: {
+            type: TransactionType.WITHDRAWAL,
+            amount: -amount, // 负数表示扣除
+            beforeBalance: beforeBalance,
+            afterBalance: afterBalance,
+            providerId: withdrawal.providerId,
+            withdrawalId: withdrawal.id,
+          },
+        });
+
+        // 记录审计日志
+        await this.audit.log({
+          module: 'finance',
+          action: 'withdrawal_approve',
+          operatorId: params.adminId,
+          operatorRole: 'ADMIN',
+          entityId: withdrawal.id,
+          detail: {
+            amount,
+            beforeBalance,
+            afterBalance,
+          },
+        });
+
+        return updatedWithdrawal;
       });
     }
+    
     return withdrawal;
   }
 

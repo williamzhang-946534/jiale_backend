@@ -70,6 +70,8 @@ model Provider {
   transactions        Transaction[]
   favoritedBy         UserFavoriteProvider[]
   withdrawals         Withdrawal[]
+  bankCards           BankCard[]
+  withdrawalRecords   WithdrawalRecord[]
 }
 
 model ProviderDailyStats {
@@ -281,10 +283,68 @@ model Withdrawal {
   firstReviewerId  String?
   secondReviewerId String?
   reviewedAt       DateTime?
+  // 新增字段
+  fee              Decimal          @default(0.00) @db.Decimal(10, 2)
+  actualAmount     Decimal          @db.Decimal(18, 2)
+  bankCardId       String?
+  failureReason    String?
+  processedAt      DateTime?
+  completedAt      DateTime?
+  estimatedArrival String           @default("1-3个工作日")
+  remark           String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
-  transactions     Transaction[]
   provider         Provider         @relation(fields: [providerId], references: [id])
+}
+
+model BankCard {
+  id               String            @id @default(cuid())
+  providerId       String            @map("provider_id")
+  bankName         String            @map("bank_name")
+  bankCode         String            @map("bank_code")
+  cardNumber       String            @map("card_number") // 加密存储
+  maskedCardNumber String            @map("masked_card_number")
+  cardHolder       String            @map("card_holder")
+  cardType         CardType          @default(DEBIT) @map("card_type")
+  isDefault        Boolean           @default(false) @map("is_default")
+  status           String            @default("ACTIVE") @map("status")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  lastUsedAt       DateTime?         @map("last_used_at")
+  withdrawalRecords WithdrawalRecord[]
+  provider         Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, maskedCardNumber])
+  @@index([providerId])
+  @@index([providerId, isDefault])
+  @@map("bank_cards")
+}
+
+model WithdrawalRecord {
+  id               String               @id @default(cuid())
+  providerId       String               @map("provider_id")
+  orderId          String               @unique @map("order_id")
+  amount           Decimal              @db.Decimal(10, 2)
+  fee              Decimal              @default(0.00) @db.Decimal(10, 2)
+  actualAmount     Decimal              @db.Decimal(10, 2) @map("actual_amount")
+  bankCardId       String               @map("bank_card_id")
+  bankInfo         Json                 @map("bank_info") // 银行信息快照
+  status           String               @default("PENDING") @map("status")
+  failureReason    String?              @map("failure_reason")
+  processedAt      DateTime?            @map("processed_at")
+  completedAt      DateTime?            @map("completed_at")
+  estimatedArrival String               @default("1-3个工作日") @map("estimated_arrival")
+  remark           String?
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+  bankCard         BankCard             @relation(fields: [bankCardId], references: [id], onDelete: Restrict)
+  provider         Provider             @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+
+  @@index([providerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("withdrawal_records")
 }
 
 model Transaction {
@@ -301,7 +361,9 @@ model Transaction {
   order         Order?          @relation(fields: [orderId], references: [id])
   provider      Provider?       @relation(fields: [providerId], references: [id])
   user          User?           @relation(fields: [userId], references: [id])
-  withdrawal    Withdrawal?     @relation(fields: [withdrawalId], references: [id])
+  withdrawal    WithdrawalRecord?     @relation(fields: [withdrawalId], references: [id])
+
+  @@map("Transaction")
 }
 
 model ProviderSchedule {
@@ -546,4 +608,23 @@ enum WithdrawalStatus {
   PENDING_REVIEW
   APPROVED
   REJECTED
+}
+
+enum CardType {
+  DEBIT
+  CREDIT
+}
+
+enum BankCardStatus {
+  ACTIVE
+  FROZEN
+  EXPIRED
+}
+
+enum WithdrawalRecordStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

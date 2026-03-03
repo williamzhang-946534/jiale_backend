@@ -47,6 +47,27 @@ export class CustomerOrderController {
     return ok({ list, total });
   }
 
+  @Get('orders/status-groups')
+  async getStatusGroups() {
+    const statusGroups = this.orderService.getAllStatusGroups();
+    return ok(statusGroups);
+  }
+
+  @Get('orders/status-texts')
+  async getStatusTexts() {
+    // 返回所有状态的显示文本映射
+    const statusTexts = {
+      PENDING_PAYMENT: '待支付',
+      PENDING: '待接单',
+      ACCEPTED: '已接单',
+      ARRIVED: '已到达',
+      STARTED: '服务中',
+      COMPLETED: '已完成',
+      CANCELED: '已取消'
+    };
+    return ok(statusTexts);
+  }
+
   @Get('orders/:id')
   async detail(@Req() req: any, @Param('id') id: string) {
     const data = await this.orderService.getOrderDetailForUser(
